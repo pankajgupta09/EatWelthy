@@ -1,0 +1,40 @@
+// Existing Alert Types
+export const SET_ALERT = "SET_ALERT";
+export const REMOVE_ALERT = "REMOVE_ALERT";
+
+// Existing Auth Types
+export const REGISTER_SUCCESS = "REGISTER_SUCCESS";
+export const REGISTER_FAIL = "REGISTER_FAIL";
+export const USER_LOADED = "USER_LOADED";
+export const AUTH_ERROR = "AUTH_ERROR";
+export const LOGIN_SUCCESS = "LOGIN_SUCCESS";
+export const LOGIN_FAIL = "LOGIN_FAIL";
+export const LOGOUT = "LOGOUT";
+
+// Existing Supermarket Types
+export const GET_SUPERMARKETS = "GET_SUPERMARKETS";
+export const SUPERMARKETS_ERROR = "SUPERMARKETS_ERROR";
+
+// Existing Nutrition Types
+export const ADD_NUTRITION_INFOR_SUCCESS = "ADD_NUTRITION_INFOR_SUCCESS";
+export const ADD_NUTRITION_INFOR_FAIL = "ADD_NUTRITION_INFOR_FAIL";
+export const GOOGLE_AUTO = "GOOGLE_AUTO";
+export const FETCH_FOODS_SUCCESS = 'FETCH_FOODS_SUCCESS';
+export const FETCH_FOODS_FAIL = 'FETCH_FOODS_FAIL';
+export const DELETE_FOOD_SUCCESS = 'DELETE_FOOD_SUCCESS';
+export const DELETE_FOOD_FAIL = 'DELETE_FOOD_FAIL';
+export const UPDATE_FOOD_SUCCESS = 'UPDATE_FOOD_SUCCESS';
+export const UPDATE_FOOD_FAIL = 'UPDATE_FOOD_FAIL';
+
+// New Profile Types - Add these
+export const SET_PROFILE = "SET_PROFILE";
+export const PROFILE_ERROR = "PROFILE_ERROR";
+export const LOADING_PROFILE = "LOADING_PROFILE";
+export const UPDATE_PROFILE = "UPDATE_PROFILE";
+export const CLEAR_PROFILE = "CLEAR_PROFILE";
+
+export const EMAIL_VERIFICATION_SUCCESS = 'EMAIL_VERIFICATION_SUCCESS';
+export const EMAIL_VERIFICATION_FAIL = 'EMAIL_VERIFICATION_FAIL';
+
+export const UPDATE_NAME_SUCCESS = 'UPDATE_NAME_SUCCESS';
+export const UPDATE_NAME_FAIL = 'UPDATE_NAME_FAIL';

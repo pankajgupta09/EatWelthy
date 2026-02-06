@@ -1,0 +1,59 @@
+.main-container {
+  margin-top: 80px;
+  padding: 0 60px;
+  width: 100%;
+}
+
+.wrapper {
+  width: 100%;
+}
+
+.event-add {
+  width: 70%;
+  display: flex;
+  flex-direction: row;
+  margin: 20px 0;
+  font-size: 20px;
+}
+
+.title {
+  width: 30%;
+  padding: 10px 0;
+  font-weight: 600;
+}
+
+.description {
+  width: 70%;
+  padding: 10px 0;
+  font-size: 20px;
+}
+
+.buttons-container {
+  display: flex; /* Flex container for buttons */
+  justify-content: flex-start; /* Align buttons to the start */
+}
+
+.buttons-container button {
+  margin-top: 20px;
+  margin-right: 20px; /* Adjust margin for spacing */
+  background-color: darkgreen;
+  font-size: 20px;
+  font-weight: 600;
+  padding: 15px 20px; /* Adjusted padding for buttons */
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+}
+
+.buttons-container button:last-child {
+  margin-right: 0; /* No right margin for the last button */
+}
+
+.buttons-container button:active {
+  transform: scale(1.1);
+}
+
+.buttons-container button:hover {
+  background-color: lightgreen;
+  color: darkgreen;
+}

@@ -1,0 +1,93 @@
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+    monospace;
+}
+
+.wrapper {
+  width: 100%;
+  height: 100%;
+  padding: 15px;
+}
+
+.search {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  /* transform: translateX(-50%); */
+  max-width: 400px;
+  z-index: 10;
+}
+
+.search input {
+  padding: 0.5rem;
+  font-size: 1.5rem;
+  width: 100%;
+}
+
+.locate {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  border: none;
+}
+.locate img {
+  width: 60px;
+  cursor: pointer;
+  border: none;
+}
+.address {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  z-index: 10;
+  border: none;
+  background-color: #73e984;
+  font-size: 18px;
+  padding: 25px;
+  border-radius: 15px;
+  opacity: 0.9;
+}
+
+.address span {
+  text-decoration: underline;
+  font-weight: bold;
+}
+.box-style {
+  width: 400px;
+}
+
+.box-input {
+  background-color: #73e984;
+  border: none;
+  border-radius: 12px;
+  font-family: sans-serif;
+  font-weight: 400;
+}
+
+.box-input::placeholder {
+  color: gray;
+  font-weight: 100;
+}
+
+.locate {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.locate img {
+  width: 60px;
+  cursor: pointer;
+  filter: none;  /* Ensures no color filters are applied */
+  -webkit-filter: none;  /* For Safari support */
+}
+
+.locate img:hover {
+  transform: scale(1.1);  /* Optional: adds a slight zoom effect on hover */
+  transition: transform 0.2s ease;
+}
