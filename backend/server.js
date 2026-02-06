@@ -83,13 +83,13 @@ mongoose
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.log(err));
 
-// Serve static assets (Only for backend public files, not React App)
-app.use(express.static(path.join(__dirname, "public")));
-
 // API Root Message
 app.get("/", (req, res) => {
   res.send("EatWelthy Backend API is Running 🚀");
 });
+
+// Serve static assets (Only for backend public files, not React App)
+app.use(express.static(path.join(__dirname, "public")));
 
 // Start the server
 app.listen(PORT, () => {

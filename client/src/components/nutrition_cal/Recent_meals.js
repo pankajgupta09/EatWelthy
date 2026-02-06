@@ -2,6 +2,33 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import config from '../../config';
 
+// Helper functions moved outside component to avoid dependency issues
+const formatNumber = (value) => Math.round(value);
+
+const getDateForQuery = (daysAgo) => {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() - daysAgo);
+  return date;
+};
+
+const calculateDayTotals = (meals) => {
+  const totals = {
+    energy: 0, fat: 0, sugar: 0, fiber: 0, protein: 0,
+    sodium: 0, vitamin_c: 0, calcium: 0, iron: 0
+  };
+
+  meals.forEach(({ meal, nutrition }) => {
+    if (nutrition && nutrition !== "No nutrition data found for this meal.") {
+      Object.keys(totals).forEach(nutrient => {
+        const val = nutrition[0]?.[nutrient];
+        totals[nutrient] += (val * meal.portion) || 0;
+      });
+    }
+  });
+  return totals;
+};
+
 const RecentMeals = ({ userId }) => {
   const [mealData, setMealData] = useState({
     today: { meals: [], totals: {} },
@@ -9,55 +36,21 @@ const RecentMeals = ({ userId }) => {
     twoDaysAgo: { meals: [], totals: {} }
   });
 
-  const getDateForQuery = (daysAgo) => {
-    const date = new Date();
-    date.setHours(0, 0, 0, 0);
-    date.setDate(date.getDate() - daysAgo);
-    return date;
-  };
-
-  // Updated to format all numbers with 0 decimal places
-  const formatNumber = (value) => Math.round(value);
-
-  const calculateDayTotals = (meals) => {
-    const totals = {
-      energy: 0,
-      fat: 0,
-      sugar: 0,
-      fiber: 0,
-      protein: 0,
-      sodium: 0,
-      vitamin_c: 0,
-      calcium: 0,
-      iron: 0
+  useEffect(() => {
+    const fetchMealsForDate = async (date) => {
+      try {
+        const response = await axios.post(`${config.backendUrl}/nutrition/query_meal`, {
+          meal_type: '',
+          owner: userId,
+          time: date
+        });
+        return response.data.success ? response.data.meals : [];
+      } catch (err) {
+        console.error("Error fetching meals:", err);
+        return [];
+      }
     };
 
-    meals.forEach(({ meal, nutrition }) => {
-      if (nutrition !== "No nutrition data found for this meal.") {
-        Object.keys(totals).forEach(nutrient => {
-          totals[nutrient] += (nutrition[0][nutrient] * meal.portion) || 0;
-        });
-      }
-    });
-
-    return totals;
-  };
-
-  const fetchMealsForDate = async (date) => {
-    try {
-      const response = await axios.post(`${config.backendUrl}/nutrition/query_meal`, {
-        meal_type: '',
-        owner: userId,
-        time: date
-      });
-      return response.data.success ? response.data.meals : [];
-    } catch (err) {
-      console.error("Error fetching meals:", err);
-      return [];
-    }
-  };
-
-  useEffect(() => {
     const fetchAllMeals = async () => {
       const dates = [0, 1, 2].map(getDateForQuery);
       const [todayMeals, yesterdayMeals, twoDaysAgoMeals] = await Promise.all(
@@ -65,22 +58,15 @@ const RecentMeals = ({ userId }) => {
       );
 
       setMealData({
-        today: {
-          meals: todayMeals,
-          totals: calculateDayTotals(todayMeals)
-        },
-        yesterday: {
-          meals: yesterdayMeals,
-          totals: calculateDayTotals(yesterdayMeals)
-        },
-        twoDaysAgo: {
-          meals: twoDaysAgoMeals,
-          totals: calculateDayTotals(twoDaysAgoMeals)
-        }
+        today: { meals: todayMeals, totals: calculateDayTotals(todayMeals) },
+        yesterday: { meals: yesterdayMeals, totals: calculateDayTotals(yesterdayMeals) },
+        twoDaysAgo: { meals: twoDaysAgoMeals, totals: calculateDayTotals(twoDaysAgoMeals) }
       });
     };
 
-    fetchAllMeals();
+    if (userId) {
+      fetchAllMeals();
+    }
   }, [userId]);
 
   const renderMealTable = (dayData, title) => (
@@ -146,7 +132,6 @@ const RecentMeals = ({ userId }) => {
       </div>
     </div>
   );
-  
 
   return (
     <div className="recent-meals">
