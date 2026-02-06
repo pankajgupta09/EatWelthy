@@ -7,8 +7,10 @@ const jwtSecret = "mysecrettoken";
 
 const User = require("../models/User");
 
-// Get client URL from environment or use default
-const clientURL = process.env.CLIENT_URL || "http://localhost:3000";
+// Get client URL from environment or use default based on NODE_ENV
+const clientURL = process.env.CLIENT_URL || (process.env.NODE_ENV === 'production'
+  ? "https://eat-welthy.vercel.app"
+  : "http://localhost:3000");
 
 // set autentication method - Gogle + email
 googleAuth.get(
