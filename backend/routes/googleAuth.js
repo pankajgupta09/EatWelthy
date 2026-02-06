@@ -7,6 +7,9 @@ const jwtSecret = "mysecrettoken";
 
 const User = require("../models/User");
 
+// Get client URL from environment or use default
+const clientURL = process.env.CLIENT_URL || "http://localhost:3000";
+
 // set autentication method - Gogle + email
 googleAuth.get(
   "/",
@@ -83,7 +86,7 @@ googleAuth.get(
   "/callback",
   passport.authenticate("google", {
     failureRedirect: "/failure",
-    successRedirect: "http://localhost:3000/login",
+    successRedirect: clientURL + "/login",
     session: true,
   })
 );

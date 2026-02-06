@@ -13,9 +13,9 @@ console.log("Passport Config - ClientID present:", !!clientID);
 console.log("Passport Config - ClientSecret present:", !!clientSecret);
 
 // Determine valid callback URL based on environment
-const callbackURL = process.env.NODE_ENV === 'production'
+const callbackURL = process.env.GOOGLE_CALLBACK_URL || (process.env.NODE_ENV === 'production'
   ? "https://eatwelthy-backend.onrender.com/users/google/callback"
-  : "/users/google/callback";
+  : "/users/google/callback");
 
 if (clientID && clientSecret && clientID !== 'your_google_client_id') {
   try {
