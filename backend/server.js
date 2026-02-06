@@ -29,13 +29,17 @@ const FRONTEND_URL = "https://eat-welthy.vercel.app";
 
 const app = express();
 
+// Required for Render/Heroku to handle secure cookies properly behind load balancer
+app.set("trust proxy", 1);
+
 app.use(
   cookieSession({
     name: "session",
     maxAge: 24 * 60 * 60 * 1000,
-    keys: [process.env.COOKIE_KEY_1, process.env.COOKIE_KEY_2],
-    sameSite: isProduction ? "none" : "lax",
-    secure: isProduction,
+    keys: [process.env.COOKIE_KEY_1 || "secretKey1", process.env.COOKIE_KEY_2 || "secretKey2"],
+    sameSite: "none", // Must be 'none' for cross-site (Vercel -> Render)
+    secure: true,     // Must be true for sameSite: 'none'
+    httpOnly: true,
   })
 );
 
