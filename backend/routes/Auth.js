@@ -34,7 +34,8 @@ function getClientUrl() {
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
-  sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+  // "none" required for cross-origin cookies (Vercel frontend → Render backend)
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
   maxAge: 5 * 24 * 60 * 60 * 1000, // 5 days
 };
 
@@ -451,7 +452,7 @@ router.delete("/delete", auth, async (req, res) => {
 // @desc    Logout — clear HTTP-only cookie
 // @access  Public
 router.delete("/auth", (req, res) => {
-  res.clearCookie("token", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
+  res.clearCookie("token", { httpOnly: true, sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", secure: process.env.NODE_ENV === "production" });
   res.json({ msg: "Logged out" });
 });
 
