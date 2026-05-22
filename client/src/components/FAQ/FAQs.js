@@ -55,15 +55,6 @@ const FAQs = () => {
         </div>
 
         <div className="faq-item">
-          <h3>What is Welloh, and how does the chatbot work?</h3>
-          <p>
-            WellOh is our AI-powered chatbot designed to help you with meal
-            planning, nutrition advice, and more. You can ask WellOh about meal
-            suggestions, nutritional information, or store availability, and it
-            will assist you with real-time responses.
-          </p>
-        </div>
-        <div className="faq-item">
           <h3>How do I manage events and track my schedule?</h3>
           <p>
             The 'Calendar' feature lets you add, update, and delete events

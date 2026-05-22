@@ -17,7 +17,6 @@ import setAuthToken from "./utils/setAuthToken";
 import NutritionCalculator from "./components/nutrition_cal/NutritionCalculator";
 import DietPlanner from "./components/Analysis/DietPlanner";
 import DailyPriceList from "./components/Grocery/DailyPriceList";
-import Welloh from "./components/Welloh/Welloh";
 import MyCalendar from "./components/Calendar/MyCalendar";
 import AddEvents from "./components/Calendar/AddEvents";
 import UpdateEvent from "./components/Calendar/UpdateEvent";
@@ -84,7 +83,6 @@ function App() {
             path="/daily-price-list"
             element={withLayout(DailyPriceList)}
           />
-          <Route path="/welloh" element={withLayout(Welloh)} />
           <Route
             path="/calendar"
             element={<PrivateRoute element={() => withLayout(MyCalendar)} />}

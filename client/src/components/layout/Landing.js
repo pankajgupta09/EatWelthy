@@ -23,9 +23,9 @@ const Landing = ({ auth }) => {
       backDescription: "Visual analytics to track your nutrition and health goals"
     },
     {
-      title: "AI Chatbot",
-      description: "Your best helper",
-      backDescription: "Instant nutrition advice from Welloh, your own AI assistant"
+      title: "Expert Tips",
+      description: "Nutrition guidance",
+      backDescription: "Evidence-based nutrition guidance to help you eat better every day"
     },
     {
       title: "Store Locator",

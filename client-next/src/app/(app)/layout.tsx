@@ -11,7 +11,6 @@ import {
   CalendarDays,
   MapPin,
   HelpCircle,
-  Bot,
   LogOut,
   User,
 } from "lucide-react";
@@ -26,7 +25,6 @@ const NAV_ITEMS = [
   { label: "Calendar", href: "/calendar", icon: CalendarDays },
   { label: "Location", href: "/location", icon: MapPin },
   { label: "FAQs", href: "/faqs", icon: HelpCircle },
-  { label: "Welloh AI", href: "/welloh", icon: Bot },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

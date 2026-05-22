@@ -68,11 +68,6 @@ const Sidebar = ({ user }) => {
         <li>
           <Link to="/location">Location</Link>
         </li>
-        <li>
-          <Link to="/Welloh" className="wellohli">
-            Welloh
-          </Link>
-        </li>
       </ul>
     </div>
   );

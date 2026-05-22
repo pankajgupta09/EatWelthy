@@ -15,14 +15,9 @@ const FAQS: FAQ[] = [
       "Go to the Tracker page and select the 'Log Meal' tab. Fill in the date/time, meal type (breakfast, lunch, dinner, or snack), food name, and portion size in grams. Click 'Add Meal' to save it.",
   },
   {
-    question: "How does the AI diet plan work?",
+    question: "How does the diet plan work?",
     answer:
-      "EatWelthy uses your profile data — age, weight, height, activity level, dietary preferences, and goal — to generate a personalised meal plan via AI. Navigate to the Dashboard or Analysis page and click 'Generate Diet Plan'.",
-  },
-  {
-    question: "What is Welloh AI?",
-    answer:
-      "Welloh is your personal AI nutrition coach. Ask it anything about your meals, macros, recipes, or health goals. It's context-aware and uses your profile data to give tailored advice.",
+      "EatWelthy uses your profile data — age, weight, height, activity level, dietary preferences, and goal — to generate a personalised meal plan. Navigate to the Dashboard or Analysis page and click 'Generate Diet Plan'.",
   },
   {
     question: "How do I add my own food to the database?",
@@ -37,7 +32,7 @@ const FAQS: FAQ[] = [
   {
     question: "What are dietary preferences and allergies used for?",
     answer:
-      "They help Welloh AI and the diet plan generator avoid foods that don't suit you. For example, if you're vegetarian or allergic to gluten, AI-generated plans will respect those constraints.",
+      "They help the diet plan generator avoid foods that don't suit you. For example, if you're vegetarian or allergic to gluten, generated plans will respect those constraints.",
   },
   {
     question: "How do I view my recent meals?",
@@ -111,9 +106,9 @@ export default function FAQsPage() {
         <p className="text-sm text-slate-600">
           Still have questions?{" "}
           <span className="text-green-700 font-medium">
-            Ask Welloh AI
+            Contact our support team
           </span>{" "}
-          — your personal nutrition coach is available 24/7.
+          — we're here to help.
         </p>
       </div>
     </div>

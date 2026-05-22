@@ -16,15 +16,6 @@ const forgotPasswordLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// AI chat is expensive (Groq tokens) — cap per user/IP
-const aiLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 30,
-  message: { msg: "Too many AI requests, please slow down" },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
 // Scrape endpoint hits a 3rd-party site — keep usage modest
 const scrapeLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
@@ -34,5 +25,5 @@ const scrapeLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-module.exports = { authLimiter, forgotPasswordLimiter, aiLimiter, scrapeLimiter };
+module.exports = { authLimiter, forgotPasswordLimiter, scrapeLimiter };
 
