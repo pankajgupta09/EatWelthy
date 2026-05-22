@@ -55,11 +55,8 @@ const Landing = ({ auth }) => {
             ))}
           </div>
           <div className="buttons">
-            <Link to="/register" className="btn">
-              Register
-            </Link>
-            <Link to="/login" className="btn">
-              Login
+            <Link to="/register" className="btn btn-getstarted">
+              Get Started
             </Link>
           </div>
         </div>

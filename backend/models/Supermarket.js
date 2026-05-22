@@ -16,11 +16,10 @@ const SupermarketSchema = new mongoose.Schema({
   ],
   food_items: [
     {
-      specific_name: String,
-      general_name: String,
+      name: String,
       category: String,
       price: Number,
-      description: String,
+      unit: String,
     },
   ],
 });

@@ -15,7 +15,7 @@
 
 .nav-links li a,
 .left-section li a {
-  color: #fff; /* Keeps link color white */
+  color: #fff;
   text-decoration: none;
   font-weight: 600;
   padding: 10px 15px;
@@ -26,8 +26,23 @@
 /* Hover Effect */
 .nav-links li a:hover,
 .left-section li a:hover {
-  background-color: rgba(255, 255, 255, 0.2); /* Light hover overlay */
-  transform: scale(1.05); /* Slightly enlarges on hover */
+  background-color: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+/* Get Started button in navbar */
+.nav-getstarted {
+  background: white !important;
+  color: #2d8a5f !important;
+  padding: 8px 22px !important;
+  border-radius: 50px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.nav-getstarted:hover {
+  background: #f0f0f0 !important;
+  transform: translateY(-1px) !important;
 }
 
 /* Responsive Layout */

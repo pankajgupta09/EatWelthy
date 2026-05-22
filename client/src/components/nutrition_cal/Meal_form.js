@@ -54,7 +54,7 @@ const MealForm = ({ userId, mode = 'tracker' }) => {
   });
 
   const handleMealQuery = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     let newNutritionTotals = {
       energy: 0,
       fat: 0,
@@ -82,7 +82,7 @@ const MealForm = ({ userId, mode = 'tracker' }) => {
         setFoodList(response.data.meals);
 
         meals.forEach(({ meal, nutrition }) => {
-          if (nutrition !== "No nutrition data found for this meal.") {
+          if (nutrition && nutrition.length > 0) {
             newNutritionTotals.energy += nutrition[0].energy * meal.portion || 0;
             newNutritionTotals.fat += nutrition[0].fat * meal.portion || 0;
             newNutritionTotals.sugar += nutrition[0].sugar * meal.portion || 0;
@@ -144,7 +144,7 @@ const MealForm = ({ userId, mode = 'tracker' }) => {
         configAxios
       );
       console.log(res);
-      handleMealQuery(e);
+      await handleMealQuery({ preventDefault: () => {} });
       showMessage("Meal logged successfully!");
 
     } catch (err) {
@@ -179,7 +179,7 @@ const MealForm = ({ userId, mode = 'tracker' }) => {
         if (response.data.success) {
           setEditingMeal(null);
           showMessage("Meal updated successfully!");
-          handleMealQuery(new Event('submit'));
+          handleMealQuery({ preventDefault: () => {} });
         } else {
           throw new Error(response.data.message || 'Update failed');
         }
@@ -201,7 +201,7 @@ const MealForm = ({ userId, mode = 'tracker' }) => {
       showMessage("Meal deleted successfully!");
       
       if (foodList.length > 1) {
-        handleMealQuery(new Event('submit'));
+        handleMealQuery({ preventDefault: () => {} });
       } else {
         setNutritionTotals({
           energy: 0,
@@ -363,15 +363,15 @@ const MealForm = ({ userId, mode = 'tracker' }) => {
                     food.meal.portion
                   )}
                 </td>
-                <td>{food.meal.portion * food.nutrition[0].energy}</td>
-                <td>{food.meal.portion * food.nutrition[0].fat}</td>
-                <td>{food.meal.portion * food.nutrition[0].sugar}</td>
-                <td>{food.meal.portion * food.nutrition[0].fiber}</td>
-                <td>{food.meal.portion * food.nutrition[0].protein}</td>
-                <td>{food.meal.portion * food.nutrition[0].sodium}</td>
-                <td>{food.meal.portion * food.nutrition[0].vitamin_c}</td>
-                <td>{food.meal.portion * food.nutrition[0].calcium}</td>
-                <td>{food.meal.portion * food.nutrition[0].iron}</td>
+                <td>{food.nutrition[0] ? food.meal.portion * food.nutrition[0].energy : "N/A"}</td>
+                <td>{food.nutrition[0] ? food.meal.portion * food.nutrition[0].fat : "N/A"}</td>
+                <td>{food.nutrition[0] ? food.meal.portion * food.nutrition[0].sugar : "N/A"}</td>
+                <td>{food.nutrition[0] ? food.meal.portion * food.nutrition[0].fiber : "N/A"}</td>
+                <td>{food.nutrition[0] ? food.meal.portion * food.nutrition[0].protein : "N/A"}</td>
+                <td>{food.nutrition[0] ? food.meal.portion * food.nutrition[0].sodium : "N/A"}</td>
+                <td>{food.nutrition[0] ? food.meal.portion * food.nutrition[0].vitamin_c : "N/A"}</td>
+                <td>{food.nutrition[0] ? food.meal.portion * food.nutrition[0].calcium : "N/A"}</td>
+                <td>{food.nutrition[0] ? food.meal.portion * food.nutrition[0].iron : "N/A"}</td>
                 <td>
                   <button 
                     onClick={() => handleEdit(food)}

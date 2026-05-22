@@ -3,40 +3,59 @@ const router = express.Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const auth = require("../middlewares/auth");
+const { authLimiter, forgotPasswordLimiter } = require("../middlewares/rateLimiter");
 const { check, validationResult } = require("express-validator");
 const User = require("../models/User");
-const fs = require("fs");
-let multer = require("multer");
-let uuidv4 = require("uuid");
+const multer = require("multer");
+const { v4: uuidv4 } = require("uuid");
 const {
   sendVerificationEmail,
-  sendForgotPasswordEmail,
+  sendPasswordResetEmail,
 } = require("../utils/emailUtil");
+const {
+  generateVerificationCode,
+  generateResetToken,
+  hashToken,
+} = require("../utils/security");
 
-var jwtSecret = "mysecrettoken";
+const jwtSecret = process.env.JWT_SECRET;
 
-// Generate 6-digit verification code
-const generateVerificationCode = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+const RESET_TOKEN_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+function getClientUrl() {
+  return (
+    process.env.CLIENT_URL ||
+    (process.env.NODE_ENV === "production"
+      ? "https://eat-welthy.vercel.app"
+      : "http://localhost:3000")
+  );
+}
+
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+  maxAge: 5 * 24 * 60 * 60 * 1000, // 5 days
 };
 
-// Helper function to generate a strong temporary password
-const generateTemporaryPassword = () => {
-  const characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-  let password = "";
-  for (let i = 0; i < 12; i++) {
-    password += characters.charAt(
-      Math.floor(Math.random() * characters.length)
-    );
-  }
-  return password;
-};
+// Issue a JWT and respond — replaces the unsafe `throw err` pattern
+function signAndSend(res, payload, extra = {}) {
+  jwt.sign(payload, jwtSecret, { expiresIn: "5 days" }, (err, token) => {
+    if (err) {
+      console.error("JWT sign error:", err.message);
+      return res.status(500).json({ msg: "Could not issue session token" });
+    }
+    res.cookie("token", token, COOKIE_OPTIONS);
+    res.json({ token, ...extra });
+  });
+}
+
 // @route   POST /users/forgot-password
-// @desc    Generate a new password and send via email
+// @desc    Send a password-reset link (secure token, never the password itself)
 // @access  Public
 router.post(
   "/forgot-password",
+  forgotPasswordLimiter,
   [check("email", "Please include a valid email").isEmail()],
   async (req, res) => {
     const errors = validationResult(req);
@@ -44,73 +63,85 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email } = req.body;
+    const email = String(req.body.email).toLowerCase().trim();
+
+    // Generic response so we don't reveal whether the email exists
+    const genericResponse = {
+      msg: "If an account exists for that email, a reset link has been sent.",
+    };
 
     try {
-      let user = await User.findOne({ email });
+      const user = await User.findOne({ email });
 
       if (!user) {
-        return res.status(404).json({ errors: [{ msg: "User not found" }] });
+        return res.json(genericResponse);
       }
 
-      // Generate a temporary new password
-      const temporaryPassword = generateTemporaryPassword();
+      const rawToken = generateResetToken();
+      const tokenHash = hashToken(rawToken);
 
-      // Hash the temporary password
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(temporaryPassword, salt);
-
-      // Update the user's password
-      user.password = hashedPassword;
+      user.resetPasswordTokenHash = tokenHash;
+      user.resetPasswordExpires = new Date(Date.now() + RESET_TOKEN_TTL_MS);
       await user.save();
 
-      // Send the new password via email
-      const emailSent = await sendForgotPasswordEmail(email, temporaryPassword);
+      const resetUrl = `${getClientUrl()}/reset-password?token=${rawToken}&email=${encodeURIComponent(email)}`;
+      await sendPasswordResetEmail(email, resetUrl);
 
-      if (!emailSent) {
-        return res
-          .status(500)
-          .json({ msg: "Failed to send the email. Please try again later." });
-      }
-
-      res.json({ msg: "A new password has been sent to your email" });
+      return res.json(genericResponse);
     } catch (err) {
-      console.error(err.message);
-      res.status(500).send("Server error");
+      console.error("Forgot-password error:", err.message);
+      return res.status(500).json({ msg: "Server error" });
     }
   }
 );
 
-// @route   PUT /users/update-name
-// @desc    Update user's name
-// @access  Private
-router.put(
-  "/update-name",
-  auth,
-  [check("name", "Name is required").not().isEmpty()],
+// @route   POST /users/reset-password
+// @desc    Complete password reset using token from email
+// @access  Public
+router.post(
+  "/reset-password",
+  forgotPasswordLimiter,
+  [
+    check("email", "Email is required").isEmail(),
+    check("token", "Token is required").isLength({ min: 32 }),
+    check("newPassword", "Password must be at least 8 characters").isLength({ min: 8 }),
+  ],
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
+    const email = String(req.body.email).toLowerCase().trim();
+    const tokenHash = hashToken(String(req.body.token));
+
     try {
-      const user = await User.findById(req.user.id);
+      const user = await User.findOne({
+        email,
+        resetPasswordTokenHash: tokenHash,
+        resetPasswordExpires: { $gt: new Date() },
+      });
+
       if (!user) {
-        return res.status(404).json({ msg: "User not found" });
+        return res.status(400).json({ msg: "Invalid or expired reset link" });
       }
 
-      user.name = req.body.name;
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(String(req.body.newPassword), salt);
+      user.resetPasswordTokenHash = undefined;
+      user.resetPasswordExpires = undefined;
       await user.save();
 
-      const userResponse = await User.findById(req.user.id).select("-password");
-      res.json(userResponse);
+      return res.json({ msg: "Password has been reset. You can now log in." });
     } catch (err) {
-      console.error(err.message);
-      res.status(500).send("Server error");
+      console.error("Reset-password error:", err.message);
+      return res.status(500).json({ msg: "Server error" });
     }
   }
 );
+
+// @route   PUT /users/update-name
+// (Moved to /api/profile/update-name — see backend/routes/profile.js)
 
 // @route   POST /users
 // @desc    Register user
@@ -118,12 +149,9 @@ router.put(
 router.post(
   "/",
   [
-    check("name", "Name is required").not().isEmpty(),
+    check("name", "Name is required").trim().isLength({ min: 1, max: 60 }),
     check("email", "Please include a valid email").isEmail(),
-    check(
-      "password",
-      "Please enter password with 6 or more characters"
-    ).isLength({ min: 6 }),
+    check("password", "Please enter password with 8 or more characters").isLength({ min: 8 }),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -134,61 +162,29 @@ router.post(
     const { name, email, password } = req.body;
 
     try {
-      let user = await User.findOne({ email });
-
-      if (user) {
-        return res
-          .status(400)
-          .json({ errors: [{ msg: "User already exists" }] });
+      const existing = await User.findOne({ email: email.toLowerCase().trim() });
+      if (existing) {
+        return res.status(400).json({ errors: [{ msg: "User already exists" }] });
       }
 
-      const verificationCode = generateVerificationCode();
-      const verificationCodeExpires = Date.now() + 24 * 60 * 60 * 1000;
-
-      user = new User({
-        name,
-        email,
-        password,
-        verificationCode,
-        verificationCodeExpires,
-        isVerified: false,
-      });
-
       const salt = await bcrypt.genSalt(10);
-      user.password = await bcrypt.hash(password, salt);
+      const hashedPassword = await bcrypt.hash(password, salt);
+
+      const user = new User({
+        name: name.trim(),
+        email: email.toLowerCase().trim(),
+        password: hashedPassword,
+        isVerified: true, // Auto-verify — no email OTP required
+      });
 
       await user.save();
 
-      // Try to send verification email
-      let emailSent = false;
-      try {
-        emailSent = await sendVerificationEmail(email, verificationCode);
-      } catch (emailError) {
-        console.error("Email sending error:", emailError);
-      }
-
-      const payload = {
-        user: {
-          id: user.id,
-        },
-      };
-
-      jwt.sign(payload, jwtSecret, { expiresIn: 360000 }, (err, token) => {
-        if (err) throw err;
-
-        const message = emailSent
-          ? "Registration successful! Please check your email for the verification code."
-          : "Registration successful! Please use 'Resend Code' on the verification page to get your code.";
-
-        res.json({
-          token,
-          msg: message,
-          emailSent: emailSent
-        });
+      return signAndSend(res, { user: { id: user.id } }, {
+        msg: "Registration successful! You can now log in.",
       });
     } catch (err) {
-      console.error(err.message);
-      res.status(500).send("Server error");
+      console.error("Register error:", err.message);
+      return res.status(500).json({ msg: "Server error" });
     }
   }
 );
@@ -212,7 +208,7 @@ router.post(
 
     try {
       const user = await User.findOne({
-        email,
+        email: String(email).toLowerCase().trim(),
         verificationCode: code,
         verificationCodeExpires: { $gt: Date.now() },
       });
@@ -230,30 +226,32 @@ router.post(
 
       res.json({ msg: "Email verified successfully" });
     } catch (err) {
-      console.error(err.message);
-      res.status(500).send("Server error");
+      console.error("Verify-code error:", err.message);
+      res.status(500).json({ msg: "Server error" });
     }
   }
 );
 
 // @route   GET /users/auth
-// @desc    Get user by token/ Loading user
+// @desc    Get user by token / Loading user
 // @access  Private
 router.get("/auth", auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
+    if (!user) return res.status(404).json({ msg: "User not found" });
     res.json(user);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send("Server Error");
+    console.error("Get-auth error:", err.message);
+    res.status(500).json({ msg: "Server error" });
   }
 });
 
 // @route   POST /users/auth
-// @desc    Authentication user & get token/ Login user
+// @desc    Authentication user & get token (login)
 // @access  Public
 router.post(
   "/auth",
+  authLimiter,
   [
     check("email", "Please include a valid email").isEmail(),
     check("password", "Password is required").exists(),
@@ -267,12 +265,10 @@ router.post(
     const { email, password } = req.body;
 
     try {
-      let user = await User.findOne({ email });
+      const user = await User.findOne({ email: String(email).toLowerCase().trim() });
 
       if (!user) {
-        return res
-          .status(400)
-          .json({ errors: [{ msg: "Invalid Credentials" }] });
+        return res.status(400).json({ errors: [{ msg: "Invalid Credentials" }] });
       }
 
       if (!user.isVerified) {
@@ -282,26 +278,14 @@ router.post(
       }
 
       const isMatch = await bcrypt.compare(password, user.password);
-
       if (!isMatch) {
-        return res
-          .status(400)
-          .json({ errors: [{ msg: "Invalid Credentials" }] });
+        return res.status(400).json({ errors: [{ msg: "Invalid Credentials" }] });
       }
 
-      const payload = {
-        user: {
-          id: user.id,
-        },
-      };
-
-      jwt.sign(payload, jwtSecret, { expiresIn: "5 days" }, (err, token) => {
-        if (err) throw err;
-        res.json({ token });
-      });
+      return signAndSend(res, { user: { id: user.id } });
     } catch (err) {
-      console.error(err.message);
-      res.status(500).send("Server error");
+      console.error("Login error:", err.message);
+      res.status(500).json({ msg: "Server error" });
     }
   }
 );
@@ -318,19 +302,15 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email } = req.body;
+    const email = String(req.body.email).toLowerCase().trim();
 
     try {
       const user = await User.findOne({ email });
-
       if (!user) {
         return res.status(400).json({ errors: [{ msg: "User not found" }] });
       }
-
       if (user.isVerified) {
-        return res
-          .status(400)
-          .json({ errors: [{ msg: "Email already verified" }] });
+        return res.status(400).json({ errors: [{ msg: "Email already verified" }] });
       }
 
       const verificationCode = generateVerificationCode();
@@ -342,140 +322,137 @@ router.post(
 
       res.json({ msg: "New verification code sent" });
     } catch (err) {
-      console.error(err.message);
-      res.status(500).send("Server error");
+      console.error("Resend-verification error:", err.message);
+      res.status(500).json({ msg: "Server error" });
     }
   }
 );
 
-//Upload File
-const DIR = "./public/";
+// ============ Avatar upload (Cloudinary-backed) ============
+const { uploadAvatarToCloudinary, deleteAvatarFromCloudinary } = require("../utils/cloudinary");
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, DIR);
-  },
-  filename: (req, file, cb) => {
-    const fileName = file.originalname.toLowerCase().split(" ").join("-");
-    cb(null, uuidv4() + "-" + fileName);
-  },
-});
-
-var upload = multer({
-  storage: storage,
+const memoryStorage = multer.memoryStorage();
+const upload = multer({
+  storage: memoryStorage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
   fileFilter: (req, file, cb) => {
-    if (
-      file.mimetype == "image/png" ||
-      file.mimetype == "image/jpg" ||
-      file.mimetype == "image/jpeg"
-    ) {
+    const allowed = ["image/png", "image/jpg", "image/jpeg", "image/webp"];
+    if (allowed.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(null, false);
-      return cb(new Error("Only .png, .jpg and .jpeg format allowed!"));
+      cb(new Error("Only PNG, JPG, JPEG, and WEBP images are allowed"));
     }
   },
 });
 
-//@route   POST /users/uploadfile
-//@desc    Avatar Upload File
-//@access  Public
-router.post(
-  "/uploadfile",
-  auth,
-  [upload.single("avatar")],
-  async (req, res) => {
-    try {
-      const url = req.protocol + "://" + req.get("host");
-
-      const user = await User.findOne({ _id: req.user.id });
-
-      const deletepicture = user.avatar.split("/");
-      try {
-        fs.unlinkSync("public/" + deletepicture[4]);
-      } catch (err) {
-        console.log(err);
+// Multer error handler wrapper — turns errors into clean JSON responses
+function avatarUpload(req, res, next) {
+  upload.single("avatar")(req, res, (err) => {
+    if (err) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res.status(400).json({ msg: "File too large (max 2 MB)" });
       }
-      const response = await User.update(
-        { _id: req.user.id },
-        {
-          $set: {
-            avatar: url + "/public/" + req.file.filename,
-          },
-        }
-      );
-      console.log(response);
-      return res.status(200).send();
-    } catch (err) {
-      console.error(err.message);
-      return res.status(500).send(message.SERVER_ERROR);
+      return res.status(400).json({ msg: err.message || "Invalid file" });
     }
+    next();
+  });
+}
+
+// @route   POST /users/uploadfile
+// @desc    Upload avatar (multipart/form-data, field name: 'avatar')
+// @access  Private
+router.post("/uploadfile", auth, avatarUpload, async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ msg: "No file uploaded" });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    // Upload new image to Cloudinary
+    const uploadResult = await uploadAvatarToCloudinary(req.file.buffer, user._id.toString());
+    if (!uploadResult?.secure_url) {
+      return res.status(500).json({ msg: "Upload failed" });
+    }
+
+    // Best-effort delete of previous avatar in Cloudinary
+    if (user.avatarPublicId) {
+      deleteAvatarFromCloudinary(user.avatarPublicId).catch((e) =>
+        console.error("Old avatar delete failed:", e.message)
+      );
+    }
+
+    user.avatar = uploadResult.secure_url;
+    user.avatarPublicId = uploadResult.public_id;
+    await user.save();
+
+    return res.json({ avatar: user.avatar });
+  } catch (err) {
+    console.error("Avatar upload error:", err.message);
+    return res.status(500).json({ msg: "Server error" });
   }
-);
+});
 
 // @route   PUT /users/updatepassword
-// @desc    Update password
+// @desc    Update password (while authenticated)
 // @access  Private
 router.put(
   "/updatepassword",
   auth,
-  [
-    check(
-      "password",
-      "Please enter a password with 6 or more characters"
-    ).isLength({ min: 6 }),
-  ],
+  [check("password", "Please enter a password with 8 or more characters").isLength({ min: 8 })],
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log("Validation failed:", errors.array());
       return res.status(400).json({ errors: errors.array() });
     }
 
     const { password } = req.body;
 
     try {
-      const userId = req.user.id;
-      console.log("User ID from token:", userId);
-
-      let user = await User.findById(userId);
-
+      const user = await User.findById(req.user.id);
       if (!user) {
-        console.log("User not found");
         return res.status(404).json({ msg: "User not found" });
       }
 
-      console.log("User found:", user.email);
-
       const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
-      console.log("Hashed password:", hashedPassword);
-
-      user.password = hashedPassword;
-
+      user.password = await bcrypt.hash(password, salt);
       await user.save();
-      console.log("Password updated successfully");
 
       res.json({ msg: "Password updated successfully" });
     } catch (err) {
-      console.log(err);
-      console.error("Error while updating password:", err.message);
-      res.status(500).send("Server error");
+      console.error("Update-password error:", err.message);
+      res.status(500).json({ msg: "Server error" });
     }
   }
 );
 
 // @route   DELETE /users/delete
-// @desc    Delete user
+// @desc    Delete user (Profile is cascade-deleted via User model hooks)
 // @access  Private
 router.delete("/delete", auth, async (req, res) => {
   try {
-    await User.findByIdAndDelete(req.user.id);
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ msg: "User not found" });
+
+    // Triggers post('deleteOne') hook which removes the Profile too
+    await user.deleteOne();
+
     res.json({ msg: "User deleted successfully" });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send("Server error");
+    console.error("Delete-user error:", err.message);
+    res.status(500).json({ msg: "Server error" });
   }
+});
+
+// @route   DELETE /users/auth
+// @desc    Logout — clear HTTP-only cookie
+// @access  Public
+router.delete("/auth", (req, res) => {
+  res.clearCookie("token", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
+  res.json({ msg: "Logged out" });
 });
 
 module.exports = router;

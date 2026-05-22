@@ -2,13 +2,13 @@ import React, { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { loadUser } from "./actions/auth";
-import RecentMeals from "./components/nutrition_cal/Recent_meals"; // Add this import
+import RecentMeals from "./components/nutrition_cal/Recent_meals";
 
 import "./App.css";
 import Navbar from "./components/layout/Navbar";
 import Landing from "./components/layout/Landing";
 import Login from "./components/auth/Login";
-import Register from "./components/auth/Register";
+import GuestLogin from "./components/auth/GuestLogin";
 import VerifyEmail from "./components/auth/VerifyEmail";
 import PrivateRoute from "./routing/PrivateRoute";
 import NotFound from "./components/NotFound/NotFound";
@@ -58,7 +58,7 @@ function App() {
         <Navbar />
         <Routes>
           <Route path="/" element={<Landing />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/register" element={<GuestLogin />} />
           <Route path="/login" element={<Login />} />
           <Route path="/verify" element={<VerifyEmail />} />
           <Route

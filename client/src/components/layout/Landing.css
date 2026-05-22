@@ -138,6 +138,22 @@ h1 {
   transform: translateY(-2px);
 }
 
+.btn-getstarted {
+  padding: 18px 70px;
+  font-size: 1.3rem;
+  border-radius: 50px;
+  background: #2d8a5f;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  letter-spacing: 1px;
+  box-shadow: 0 4px 20px rgba(45, 138, 95, 0.5);
+}
+
+.btn-getstarted:hover {
+  background: #246e4c;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(45, 138, 95, 0.7);
+}
+
 /* Responsive Layout */
 @media (max-width: 992px) {
   .feature-cards {

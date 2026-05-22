@@ -1,4 +1,4 @@
-const crypto = require("crypto"); 
+const crypto = require("crypto");
 
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
@@ -6,7 +6,7 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 const Meal_Schema = new mongoose.Schema({
-   
+
   owner: {
     type: String,
     required: false,
@@ -18,7 +18,7 @@ const Meal_Schema = new mongoose.Schema({
   food_taken: {
     type: String,
     required:true,
-     
+
   },
   portion: {
     type: Number,
@@ -28,6 +28,9 @@ const Meal_Schema = new mongoose.Schema({
     type: Date,
   }
 });
+
+// Compound index for the most common query: get meals by owner + date range
+Meal_Schema.index({ owner: 1, time: 1 });
 
 // Static method to hash user names
 Meal_Schema.statics.hashedOwner = (owner) =>

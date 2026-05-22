@@ -1,31 +1,27 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { scrapeFairPrice } = require('../fairpriceScraper');
-const createSupermarketModel = require('../models/Supermarket');
+const { scrapeBigBasket } = require("../bigBasketScraper");
+const Supermarket = require("../models/Supermarket");
+const auth = require("../middlewares/auth");
+const { scrapeLimiter } = require("../middlewares/rateLimiter");
 
-let Supermarket;
-
-router.post('/fairprice', async (req, res) => {
+router.post("/bigbasket", auth, scrapeLimiter, async (req, res) => {
   try {
-    if (!Supermarket) {
-      Supermarket = createSupermarketModel();
+    const scrapedProducts = await scrapeBigBasket();
+
+    let supermarket = await Supermarket.findOne({ name: "BigBasket" });
+
+    if (!supermarket) {
+      supermarket = new Supermarket({ name: "BigBasket", food_items: scrapedProducts });
+    } else {
+      supermarket.food_items = scrapedProducts;
     }
 
-    const scrapedProducts = await scrapeFairPrice();
-    
-    const fairprice = await Supermarket.findOne({ name: 'FairPrice' });
-    
-    if (!fairprice) {
-      return res.status(404).json({ error: 'FairPrice not found in the database' });
-    }
-
-    fairprice.food_items = scrapedProducts;
-    await fairprice.save();
-
-    res.json({ message: 'Scraping completed and data saved', count: scrapedProducts.length });
+    await supermarket.save();
+    res.json({ message: "Scraping completed and data saved", count: scrapedProducts.length });
   } catch (error) {
-    console.error('Error in scraping route:', error);
-    res.status(500).json({ error: 'An error 1 occurred during scraping' });
+    console.error("Error in scraping route:", error.message);
+    res.status(500).json({ error: "An error occurred during scraping" });
   }
 });
 

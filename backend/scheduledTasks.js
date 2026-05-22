@@ -1,26 +1,26 @@
-const cron = require('node-cron');
-const { scrapeFairPrice } = require('./fairpriceScraper');
-const Supermarket = require('./models/Supermarket');
+const cron = require("node-cron");
+const { scrapeBigBasket } = require("./bigBasketScraper");
+const Supermarket = require("./models/Supermarket");
 
 function setupScheduledTasks() {
-  // Run every day at midnight
-  cron.schedule('0 0 * * *', async () => {
-    console.log('Running daily scrape');
+  // Run every day at 2:30 AM
+  cron.schedule("30 2 * * *", async () => {
+    console.log("Running daily BigBasket scrape...");
     try {
-      const scrapedProducts = await scrapeFairPrice();
-      const fairprice = await Supermarket.findOne({ name: 'FairPrice' });
-      
-      if (!fairprice) {
-        console.error('FairPrice not found in the database');
-        return;
+      const scrapedProducts = await scrapeBigBasket();
+
+      let supermarket = await Supermarket.findOne({ name: "BigBasket" });
+
+      if (!supermarket) {
+        supermarket = new Supermarket({ name: "BigBasket", food_items: scrapedProducts });
+      } else {
+        supermarket.food_items = scrapedProducts;
       }
 
-      fairprice.food_items = scrapedProducts;
-      await fairprice.save();
-
-      console.log('Daily scrape completed');
+      await supermarket.save();
+      console.log(`Daily scrape completed: ${scrapedProducts.length} products saved`);
     } catch (error) {
-      console.error('Error in daily scrape:', error);
+      console.error("Error in daily scrape:", error.message);
     }
   });
 }

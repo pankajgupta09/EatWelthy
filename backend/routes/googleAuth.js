@@ -1,93 +1,98 @@
 const express = require("express");
 const passport = require("passport");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 
 const googleAuth = express.Router();
-const jwtSecret = "mysecrettoken";
 
 const User = require("../models/User");
 
-// Get client URL from environment or use default based on NODE_ENV
-const clientURL = process.env.CLIENT_URL || (process.env.NODE_ENV === 'production'
+const clientURL = process.env.CLIENT_URL || (process.env.NODE_ENV === "production"
   ? "https://eat-welthy.vercel.app"
   : "http://localhost:3000");
 
-// set autentication method - Gogle + email
 googleAuth.get(
   "/",
   passport.authenticate("google", {
-    scope: ["email"],
+    scope: ["email", "https://www.googleapis.com/auth/calendar.events"],
+    accessType: "offline",
+    prompt: "consent",
   })
 );
 
 googleAuth.get("/success", async (req, res) => {
-  if (req.user) {
-    // console.log("Google INFO", req.user);
-    // console.log("ID : ", req.user.id);
-    // console.log("Name : ", "Google User (" + req.user.emails[0].value + ")");
-    // console.log("Email : ", req.user.emails[0].value);
-    // console.log("Avatar : ", req.user.photos[0].value);
-    // console.log("Date : ", null);
+  if (!req.user) {
+    return res.status(400).json({ error: "No Google login data" });
+  }
 
-    // Extract the email and handle the name formatting
-    const email = req.user.emails[0].value;
-    let userName = email.includes("@gmail.com")
-      ? email.split("@gmail.com")[0]
-      : email.split("@")[0];
+  const profile = req.user.profile || req.user;
+  const accessToken = req.user.accessToken;
+  const refreshToken = req.user.refreshToken;
 
-    try {
-      // Check if user already exists
-      let user = await User.findOne({ email });
+  const email = profile.emails[0].value;
+  const userName = email.split("@")[0];
 
-      if (!user) {
-        // If user doesn't exist, create a new user
-        user = new User({
-          name: userName, // Set name based on email formatting rule
-          email,
-          password: "google_oauth_user", // Default password for Google users
-          avatar: req.user.photos[0].value || null,
-          isVerified: true, // Mark Google-authenticated users as verified
-          date: null,
-        });
+  try {
+    let user = await User.findOne({ email });
 
-        await user.save();
-      }
+    if (!user) {
+      const randomPassword = crypto.randomBytes(32).toString("hex");
+      const bcrypt = require("bcryptjs");
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(randomPassword, salt);
 
-      // Generate JWT token
-      const payload = { user: { id: user.id } };
-      jwt.sign(payload, jwtSecret, { expiresIn: "5 days" }, (err, token) => {
-        if (err) throw err;
-        return res.status(200).json({ success: true, token, user });
+      user = new User({
+        name: userName,
+        email,
+        password: hashedPassword,
+        avatar: profile.photos?.[0]?.value || null,
+        isVerified: true,
+        googleAccessToken: accessToken || null,
+        googleRefreshToken: refreshToken || null,
       });
-    } catch (error) {
-      console.error(error.message);
-      res.status(500).send("Server Error");
+      await user.save();
+    } else {
+      // Update tokens if we got new ones
+      if (accessToken) user.googleAccessToken = accessToken;
+      if (refreshToken) user.googleRefreshToken = refreshToken;
+      await user.save();
     }
-  } else {
-    return res.status(400).json({ error: "no Google log in" });
+
+    const payload = { user: { id: user.id } };
+    jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "5 days" }, (err, token) => {
+      if (err) {
+        console.error("JWT sign error:", err.message);
+        return res.status(500).json({ success: false, message: "Could not issue session token" });
+      }
+      const isProduction = process.env.NODE_ENV === "production";
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? "strict" : "lax",
+        maxAge: 5 * 24 * 60 * 60 * 1000,
+      });
+      const safeUser = { id: user.id, name: user.name, email: user.email, avatar: user.avatar };
+      return res.status(200).json({ success: true, token, user: safeUser });
+    });
+  } catch (error) {
+    console.error("Google auth error:", error.message);
+    res.status(500).json({ success: false, message: "Server Error" });
   }
 });
 
 googleAuth.get("/failure", (req, res) => {
-  res.status(401).json({
-    success: false,
-    message: "failure",
-  });
+  res.status(401).json({ success: false, message: "Google authentication failed" });
 });
 
 googleAuth.get("/logout", async (req, res) => {
   await req.logout();
-  // res.clearCookie("session", { path: "/", httpOnly: true });
-  // res.clearCookie("session.sig", { path: "/", httpOnly: true });
-  // req.sessionOptions.maxAge = 0;
-  return res.status(200).json({ message: "logout is done" });
+  return res.status(200).json({ message: "Logged out successfully" });
 });
 
-// Handle result of authentication
 googleAuth.get(
   "/callback",
   passport.authenticate("google", {
-    failureRedirect: "/failure",
+    failureRedirect: "/users/google/failure",
     successRedirect: clientURL + "/login",
     session: true,
   })

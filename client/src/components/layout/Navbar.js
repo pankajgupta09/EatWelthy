@@ -30,10 +30,7 @@ const Navbar = ({ auth, logout }) => {
   const guestLinks = (
     <ul className="nav-links">
       <li>
-        <Link to="/register">Register</Link>
-      </li>
-      <li>
-        <Link to="/login">Login</Link>
+        <Link to="/register" className="nav-getstarted">Get Started</Link>
       </li>
     </ul>
   );
