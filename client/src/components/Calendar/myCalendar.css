@@ -119,3 +119,41 @@
 .react-datepicker__time-list {
   padding: 0 !important;
 }
+
+@media (max-width: 900px) {
+  .main-calendar {
+    padding: 0 16px;
+  }
+
+  .calendar-title {
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    padding: 14px;
+    margin-bottom: 20px;
+  }
+
+  .calendar-wrapper {
+    height: min(70vh, 560px);
+    margin: 16px 0;
+  }
+
+  .react-datepicker__navigation--next {
+    left: auto !important;
+    right: 1em !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .main-calendar {
+    padding: 0 8px;
+  }
+
+  .calendar-wrapper {
+    height: 55vh;
+    min-height: 360px;
+  }
+
+  .button-wrapper button {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+}

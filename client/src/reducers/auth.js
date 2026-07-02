@@ -13,12 +13,22 @@ import {
   UPDATE_NAME_FAIL
 } from "../actions/types";
 
+import { getGuestProfile } from "../utils/guestProfile";
+
+const guestProfile = getGuestProfile();
+const guestUser = {
+  _id: "guest",
+  name: guestProfile.name || "Guest",
+  email: "guest@eatwelthy.local",
+  isVerified: true,
+};
+
 const initialState = {
-  token: localStorage.getItem("token"),
-  isAuthenticated: localStorage.getItem("token") ? true : false, // Initialize based on token presence
-  loading: true, // Start with true to prevent flash of unauthorized content
-  user: null,
-  googleAuto: localStorage.getItem("googleAuto") === "true", // Convert string to boolean
+  token: null,
+  isAuthenticated: true,
+  loading: false,
+  user: guestUser,
+  googleAuto: false,
 };
 
 export default function authReducer(state = initialState, action) {
@@ -30,31 +40,28 @@ export default function authReducer(state = initialState, action) {
         ...state,
         isAuthenticated: true,
         loading: false,
-        user: payload,
+        user: payload || guestUser,
       };
     case REGISTER_SUCCESS:
-      // After registration, store token but DON'T authenticate until email is verified
-      if (payload.token) {
-        localStorage.setItem("token", payload.token);
-      }
-      return {
-        ...state,
-        ...payload,
-        isAuthenticated: false, // User must verify email first
-        loading: false,
-      };
-    case LOGIN_SUCCESS:
-      localStorage.setItem("token", payload.token);
       return {
         ...state,
         ...payload,
         isAuthenticated: true,
         loading: false,
+        user: guestUser,
+      };
+    case LOGIN_SUCCESS:
+      return {
+        ...state,
+        ...payload,
+        isAuthenticated: true,
+        loading: false,
+        user: guestUser,
       };
     case UPDATE_NAME_SUCCESS:
       return {
         ...state,
-        user: payload,
+        user: { ...state.user, ...payload },
         loading: false
       };
     case UPDATE_NAME_FAIL:
@@ -65,10 +72,8 @@ export default function authReducer(state = initialState, action) {
     case EMAIL_VERIFICATION_SUCCESS:
       return {
         ...state,
-        user: {
-          ...state.user,
-          isVerified: true
-        },
+        isAuthenticated: true,
+        user: { ...state.user, isVerified: true },
         loading: false
       };
     case EMAIL_VERIFICATION_FAIL:
@@ -80,18 +85,15 @@ export default function authReducer(state = initialState, action) {
     case AUTH_ERROR:
     case LOGIN_FAIL:
     case LOGOUT:
-      localStorage.removeItem("token");
-      localStorage.removeItem("googleAuto");
       return {
         ...state,
         token: null,
-        isAuthenticated: false,
+        isAuthenticated: true,
         loading: false,
         googleAuto: false,
-        user: null,
+        user: guestUser,
       };
     case GOOGLE_AUTO:
-      localStorage.setItem("googleAuto", "true"); // Store as string
       return {
         ...state,
         googleAuto: true

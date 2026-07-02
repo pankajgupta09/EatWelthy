@@ -22,9 +22,12 @@ dotenv.config();
 
 const PORT = process.env.PORT || 5050;
 const isProduction = process.env.NODE_ENV === "production";
+const LOCAL_MONGO_URI = "mongodb://127.0.0.1:27017/eatwelthy";
 
 // Define frontend URL based on environment
-const FRONTEND_URL = "https://eat-welthy.vercel.app";
+const FRONTEND_URL = isProduction
+  ? "https://eat-welthy.vercel.app"
+  : "http://localhost:3000";
 
 
 const app = express();
@@ -37,8 +40,8 @@ app.use(
     name: "session",
     maxAge: 24 * 60 * 60 * 1000,
     keys: [process.env.COOKIE_KEY_1 || "secretKey1", process.env.COOKIE_KEY_2 || "secretKey2"],
-    sameSite: "none", // Must be 'none' for cross-site (Vercel -> Render)
-    secure: true,     // Must be true for sameSite: 'none'
+    sameSite: isProduction ? "none" : "lax",
+    secure: isProduction,
     httpOnly: true,
   })
 );
@@ -78,11 +81,30 @@ app.use("/api/profile", require("./routes/profile"));
 app.use("/events", eventRoute);
 app.use("/api", nutritionixRoute);
 
-// MongoDB connection
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB connected"))
-  .catch((err) => console.error("MongoDB Connection Error:", err));
+// MongoDB connection — prefer local DB in development
+async function connectMongoDB() {
+  const candidates = isProduction
+    ? [process.env.MONGO_URI]
+    : [LOCAL_MONGO_URI, process.env.MONGO_URI].filter(Boolean);
+
+  for (const uri of candidates) {
+    try {
+      await mongoose.connect(uri);
+      const label = uri === LOCAL_MONGO_URI ? "local" : "remote";
+      console.log(`MongoDB connected (${label})`);
+      return;
+    } catch (err) {
+      const label = uri === LOCAL_MONGO_URI ? "local" : "remote";
+      console.error(`MongoDB connection failed (${label}):`, err.message);
+    }
+  }
+
+  console.error(
+    "Could not connect to MongoDB. Database operations will fail until this is resolved."
+  );
+}
+
+connectMongoDB();
 
 // API Root Message
 app.get("/", (req, res) => {

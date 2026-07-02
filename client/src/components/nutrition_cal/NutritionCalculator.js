@@ -108,7 +108,7 @@ const NutritionCalculator = () => {
   };
 
   const renderCustomFoodTable = () => (
-    <div className="faqs__container" style={{ maxWidth: '1200px', overflowX: 'auto' }}>
+    <div className="faqs__container table-scroll-wrapper">
       {!showAddForm && (
         <>
           <h3>My Custom Foods</h3>
@@ -193,7 +193,7 @@ const NutritionCalculator = () => {
         <div className="add_food_form" style={{ padding: '20px', background: '#f5f5f5', borderRadius: '10px', marginTop: '20px' }}>
           <h3>Add New Custom Food</h3>
           <form onSubmit={add_nutrition_infor2}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px' }}>
+            <div className="custom-food-grid">
               <div>
                 <label>Food Name *</label>
                 <input type="text" id="name" required placeholder="Enter food name" />
@@ -248,7 +248,7 @@ const NutritionCalculator = () => {
 
   return (
     <div className="faqs__page-wrapper">
-      <div className="faqs__container" style={{ maxWidth: '1200px' }}>
+      <div className="faqs__container">
         <h1 className="faqs__title">Nutrition Tracker</h1>
 
         <div id="food_meal_buttons" className="select">
@@ -272,7 +272,7 @@ const NutritionCalculator = () => {
           </div>
         )}
 
-        <div id="food_meal_forms" style={{ overflow: 'hidden' }}>
+        <div id="food_meal_forms">
           {formType === 'recentMeal' && (
             <RecentMeals userId={userId} />
           )}

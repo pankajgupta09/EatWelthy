@@ -13,7 +13,7 @@ const {
   sendForgotPasswordEmail,
 } = require("../utils/emailUtil");
 
-var jwtSecret = "mysecrettoken";
+var jwtSecret = process.env.JWT_SECRET || "mysecrettoken";
 
 // Generate 6-digit verification code
 const generateVerificationCode = () => {

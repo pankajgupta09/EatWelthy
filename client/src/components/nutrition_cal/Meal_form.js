@@ -19,7 +19,7 @@ const MealForm = ({ userId, mode = 'tracker' }) => {
   const [foodOptions, setFoodOptions] = useState([]);
   const [editingMeal, setEditingMeal] = useState(null);
   const isHistoryMode = mode === 'historySearch';
-  
+
   const showMessage = (text, type = "success") => {
     setMessage({ text, type });
     setTimeout(() => setMessage({ text: "", type: "" }), 5000);
@@ -81,21 +81,28 @@ const MealForm = ({ userId, mode = 'tracker' }) => {
         const meals = response.data.meals;
         setFoodList(response.data.meals);
 
+        let missingDataCount = 0;
         meals.forEach(({ meal, nutrition }) => {
-          if (nutrition !== "No nutrition data found for this meal.") {
-            newNutritionTotals.energy += nutrition[0].energy * meal.portion || 0;
-            newNutritionTotals.fat += nutrition[0].fat * meal.portion || 0;
-            newNutritionTotals.sugar += nutrition[0].sugar * meal.portion || 0;
-            newNutritionTotals.fiber += nutrition[0].fiber * meal.portion || 0;
-            newNutritionTotals.protein += nutrition[0].protein * meal.portion || 0;
-            newNutritionTotals.sodium += nutrition[0].sodium * meal.portion || 0;
-            newNutritionTotals.vitamin_c += nutrition[0].vitamin_c * meal.portion || 0;
-            newNutritionTotals.calcium += nutrition[0].calcium * meal.portion || 0;
-            newNutritionTotals.iron += nutrition[0].iron * meal.portion || 0;
+          const hasNutrition = nutrition && Array.isArray(nutrition) && nutrition.length > 0 && nutrition[0];
+
+          if (hasNutrition) {
+            newNutritionTotals.energy += (nutrition[0].energy || 0) * meal.portion || 0;
+            newNutritionTotals.fat += (nutrition[0].fat || 0) * meal.portion || 0;
+            newNutritionTotals.sugar += (nutrition[0].sugar || 0) * meal.portion || 0;
+            newNutritionTotals.fiber += (nutrition[0].fiber || 0) * meal.portion || 0;
+            newNutritionTotals.protein += (nutrition[0].protein || 0) * meal.portion || 0;
+            newNutritionTotals.sodium += (nutrition[0].sodium || 0) * meal.portion || 0;
+            newNutritionTotals.vitamin_c += (nutrition[0].vitamin_c || 0) * meal.portion || 0;
+            newNutritionTotals.calcium += (nutrition[0].calcium || 0) * meal.portion || 0;
+            newNutritionTotals.iron += (nutrition[0].iron || 0) * meal.portion || 0;
           } else {
-            window.alert("No nutrition data found for this meal.");
+            missingDataCount++;
           }
         });
+
+        if (missingDataCount > 0) {
+          console.warn(`${missingDataCount} meals have missing nutrition data.`);
+        }
         setNutritionTotals(newNutritionTotals);
         console.log("Total Nutrition Data:", nutritionTotals);
 
@@ -195,11 +202,11 @@ const MealForm = ({ userId, mode = 'tracker' }) => {
   const handleMealDelete = async (id) => {
     try {
       await axios.delete(`${config.backendUrl}/nutrition/meal_delete/${id}`);
-      
+
       setFoodList(foodList.filter(food => food.meal._id !== id));
-      
+
       showMessage("Meal deleted successfully!");
-      
+
       if (foodList.length > 1) {
         handleMealQuery(new Event('submit'));
       } else {
@@ -301,101 +308,105 @@ const MealForm = ({ userId, mode = 'tracker' }) => {
       </form>
 
       <h2>What you took:</h2>
-      <div style={{ overflowX: "auto", width: "100%" }}>
+      <div className="table-scroll-wrapper">
         <table>
-        <thead>
-  <tr>
-    <th>Meal Type</th>
-    <th>Food</th>
-    <th>Amount</th>
-    <th>Energy<br />(kcal)</th>
-    <th>Fat<br />(g)</th>
-    <th>Sugar<br />(g)</th>
-    <th>Fiber<br />(g)</th>
-    <th>Protein<br />(g)</th>
-    <th>Sodium<br />(mg)</th>
-    <th>Vitamin C<br />(mg)</th>
-    <th>Calcium<br />(mg)</th>
-    <th>Iron<br />(mg)</th>
-    <th>Actions</th>
-  </tr>
-</thead>
+          <thead>
+            <tr>
+              <th>Meal Type</th>
+              <th>Food</th>
+              <th>Amount</th>
+              <th>Energy<br />(kcal)</th>
+              <th>Fat<br />(g)</th>
+              <th>Sugar<br />(g)</th>
+              <th>Fiber<br />(g)</th>
+              <th>Protein<br />(g)</th>
+              <th>Sodium<br />(mg)</th>
+              <th>Vitamin C<br />(mg)</th>
+              <th>Calcium<br />(mg)</th>
+              <th>Iron<br />(mg)</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
 
 
           <tbody>
-            {foodList.map(food => (
-              <tr key={food.meal._id}>
-                <td>
-                  {editingMeal === food.meal._id ? (
-                    <select 
-                      id={`meal_type_${food.meal._id}`}
-                      defaultValue={food.meal.meal_type}
+            {foodList.map(food => {
+              const hasNutrition = food.nutrition && Array.isArray(food.nutrition) && food.nutrition.length > 0 && food.nutrition[0];
+              const getNutritionValue = (nutrient) => hasNutrition ? food.meal.portion * food.nutrition[0][nutrient] : 'N/A';
+              return (
+                <tr key={food.meal._id}>
+                  <td>
+                    {editingMeal === food.meal._id ? (
+                      <select
+                        id={`meal_type_${food.meal._id}`}
+                        defaultValue={food.meal.meal_type}
+                      >
+                        <option value="breakfast">Breakfast</option>
+                        <option value="lunch">Lunch</option>
+                        <option value="dinner">Dinner</option>
+                        <option value="snacks">Snacks</option>
+                        <option value="others">Others</option>
+                      </select>
+                    ) : (
+                      food.meal.meal_type
+                    )}
+                  </td>
+                  <td>
+                    {editingMeal === food.meal._id ? (
+                      <input
+                        id={`food_${food.meal._id}`}
+                        defaultValue={food.meal.food_taken}
+                        list="food-options"
+                      />
+                    ) : (
+                      food.meal.food_taken
+                    )}
+                  </td>
+                  <td>
+                    {editingMeal === food.meal._id ? (
+                      <input
+                        type="number"
+                        id={`portion_${food.meal._id}`}
+                        defaultValue={food.meal.portion}
+                      />
+                    ) : (
+                      food.meal.portion
+                    )}
+                  </td>
+                  <td>{getNutritionValue('energy')}</td>
+                  <td>{getNutritionValue('fat')}</td>
+                  <td>{getNutritionValue('sugar')}</td>
+                  <td>{getNutritionValue('fiber')}</td>
+                  <td>{getNutritionValue('protein')}</td>
+                  <td>{getNutritionValue('sodium')}</td>
+                  <td>{getNutritionValue('vitamin_c')}</td>
+                  <td>{getNutritionValue('calcium')}</td>
+                  <td>{getNutritionValue('iron')}</td>
+                  <td>
+                    <button
+                      onClick={() => handleEdit(food)}
+                      className="edit-button"
                     >
-                      <option value="breakfast">Breakfast</option>
-                      <option value="lunch">Lunch</option>
-                      <option value="dinner">Dinner</option>
-                      <option value="snacks">Snacks</option>
-                      <option value="others">Others</option>
-                    </select>
-                  ) : (
-                    food.meal.meal_type
-                  )}
-                </td>
-                <td>
-                  {editingMeal === food.meal._id ? (
-                    <input
-                      id={`food_${food.meal._id}`}
-                      defaultValue={food.meal.food_taken}
-                      list="food-options"
-                    />
-                  ) : (
-                    food.meal.food_taken
-                  )}
-                </td>
-                <td>
-                  {editingMeal === food.meal._id ? (
-                    <input
-                      type="number"
-                      id={`portion_${food.meal._id}`}
-                      defaultValue={food.meal.portion}
-                    />
-                  ) : (
-                    food.meal.portion
-                  )}
-                </td>
-                <td>{food.meal.portion * food.nutrition[0].energy}</td>
-                <td>{food.meal.portion * food.nutrition[0].fat}</td>
-                <td>{food.meal.portion * food.nutrition[0].sugar}</td>
-                <td>{food.meal.portion * food.nutrition[0].fiber}</td>
-                <td>{food.meal.portion * food.nutrition[0].protein}</td>
-                <td>{food.meal.portion * food.nutrition[0].sodium}</td>
-                <td>{food.meal.portion * food.nutrition[0].vitamin_c}</td>
-                <td>{food.meal.portion * food.nutrition[0].calcium}</td>
-                <td>{food.meal.portion * food.nutrition[0].iron}</td>
-                <td>
-                  <button 
-                    onClick={() => handleEdit(food)}
-                    className="edit-button"
-                  >
-                    {editingMeal === food.meal._id ? 'Save' : 'Edit'}
-                  </button>
-                  {editingMeal === food.meal._id && (
-                    <button 
-                      onClick={() => setEditingMeal(null)}
-                      className="cancel-button"
-                    >
-                      Cancel
+                      {editingMeal === food.meal._id ? 'Save' : 'Edit'}
                     </button>
-                  )}
-                  <button 
-                    onClick={() => handleMealDelete(food.meal._id)}
-                    className="delete-button"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
+                    {editingMeal === food.meal._id && (
+                      <button
+                        onClick={() => setEditingMeal(null)}
+                        className="cancel-button"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleMealDelete(food.meal._id)}
+                      className="delete-button"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
             <tr>
               <td colSpan={3}>Total Nutrition:</td>
               <td>{nutritionTotals.energy}</td>

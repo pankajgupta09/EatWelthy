@@ -7,6 +7,7 @@ import {
   getProfile,
 } from "../../actions/Profile";
 import { updateName } from "../../actions/auth";
+import { UPDATE_NAME_SUCCESS } from "../../actions/types";
 import "./Profile.css";
 
 // Import all animal icons
@@ -106,7 +107,7 @@ const Profile = () => {
       if (profileData) {
         setFormData((prev) => ({
           ...prev,
-          name: authState.user?.name || "",
+          name: profileData.name || authState.user?.name || "Guest",
           age: profileData.age || "",
           gender: profileData.gender || "",
           height: profileData.height || "",
@@ -194,13 +195,16 @@ const Profile = () => {
     }
 
     if (name !== authState.user?.name) {
-      const nameUpdateSuccess = await dispatch(updateName(name));
-      if (!nameUpdateSuccess) {
-        return;
+      if (!localStorage.getItem("token")) {
+        dispatch({ type: UPDATE_NAME_SUCCESS, payload: { name } });
+      } else {
+        const nameUpdateSuccess = await dispatch(updateName(name));
+        if (!nameUpdateSuccess) return;
       }
     }
 
     const profileData = {
+      name,
       age: Number(age) || 0,
       gender,
       height: Number(height) || 0,
@@ -248,12 +252,28 @@ const Profile = () => {
   const handleDelete = async () => {
     if (
       window.confirm(
-        "Are you sure you want to delete your account? This action cannot be undone."
+        "Are you sure you want to clear your saved profile data?"
       )
     ) {
       const success = await dispatch(deleteAccount());
       if (success) {
-        showMessage("Account deleted successfully");
+        setFormData({
+          name: authState.user?.name || "Guest",
+          newPassword: "",
+          confirmPassword: "",
+          age: "",
+          gender: "",
+          height: "",
+          weight: "",
+          targetWeight: "",
+          dailyBudget: "",
+          dietaryPreferences: "",
+          allergies: "",
+          activityLevel: "sedentary",
+          dietPlan: "maintenance",
+          profileIcon: "bear",
+        });
+        showMessage("Profile data cleared successfully");
       }
     }
   };
@@ -451,37 +471,19 @@ const Profile = () => {
           </form>
         </div>
 
-        <div className="profile-form-section">
+        <div className="profile-form-section profile-form-section-muted">
           <h2>Change Password</h2>
-          <form onSubmit={onSubmitPassword}>
-            <div className="form-field">
-              <label>New Password</label>
-              <input
-                type="password"
-                name="newPassword"
-                value={newPassword}
-                onChange={onChange}
-              />
-            </div>
-            <div className="form-field">
-              <label>Confirm Password</label>
-              <input
-                type="password"
-                name="confirmPassword"
-                value={confirmPassword}
-                onChange={onChange}
-              />
-            </div>
-            <button type="submit">Update Password</button>
-          </form>
+          <p className="guest-notice">
+            Password management is not required — you're using the app as a guest.
+          </p>
         </div>
 
-        <div className="danger-zone">
-          <h2>Delete Account</h2>
+        <div className="danger-zone danger-zone-muted">
+          <h2>Reset Profile Data</h2>
           <p className="danger-text">
-            This action cannot be undone. Please be certain.
+            This will clear all locally saved profile information.
           </p>
-          <button onClick={handleDelete}>Delete My Account</button>
+          <button onClick={handleDelete}>Clear Profile Data</button>
         </div>
       </div>
     </div>

@@ -1,96 +1,112 @@
 const express = require("express");
 const passport = require("passport");
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 
 const googleAuth = express.Router();
-const jwtSecret = "mysecrettoken";
+const jwtSecret = process.env.JWT_SECRET || "mysecrettoken";
 
 const User = require("../models/User");
 
-// Get client URL from environment or use default based on NODE_ENV
-const clientURL = process.env.CLIENT_URL || (process.env.NODE_ENV === 'production'
-  ? "https://eat-welthy.vercel.app"
-  : "http://localhost:3000");
+const clientURL =
+  process.env.CLIENT_URL ||
+  (process.env.NODE_ENV === "production"
+    ? "https://eat-welthy.vercel.app"
+    : "http://localhost:3000");
 
-// set autentication method - Gogle + email
+const handleGoogleUser = async (profile) => {
+  const email = profile.emails[0].value;
+  const userName = email.includes("@gmail.com")
+    ? email.split("@gmail.com")[0]
+    : email.split("@")[0];
+
+  let user = await User.findOne({ email });
+
+  if (!user) {
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash("google_oauth_user", salt);
+
+    user = new User({
+      name: userName,
+      email,
+      password: hashedPassword,
+      avatar: profile.photos?.[0]?.value || null,
+      isVerified: true,
+    });
+
+    await user.save();
+  } else if (!user.isVerified) {
+    user.isVerified = true;
+    await user.save();
+  }
+
+  return user;
+};
+
+const signToken = (userId) =>
+  new Promise((resolve, reject) => {
+    jwt.sign({ user: { id: userId } }, jwtSecret, { expiresIn: "5 days" }, (err, token) => {
+      if (err) reject(err);
+      else resolve(token);
+    });
+  });
+
+// Start Google OAuth
 googleAuth.get(
   "/",
   passport.authenticate("google", {
-    scope: ["email"],
+    scope: ["profile", "email"],
+    session: false,
   })
 );
 
-googleAuth.get("/success", async (req, res) => {
-  if (req.user) {
-    // console.log("Google INFO", req.user);
-    // console.log("ID : ", req.user.id);
-    // console.log("Name : ", "Google User (" + req.user.emails[0].value + ")");
-    // console.log("Email : ", req.user.emails[0].value);
-    // console.log("Avatar : ", req.user.photos[0].value);
-    // console.log("Date : ", null);
-
-    // Extract the email and handle the name formatting
-    const email = req.user.emails[0].value;
-    let userName = email.includes("@gmail.com")
-      ? email.split("@gmail.com")[0]
-      : email.split("@")[0];
-
+// OAuth callback — issue JWT and redirect to frontend (no session cookies needed)
+googleAuth.get(
+  "/callback",
+  passport.authenticate("google", {
+    failureRedirect: `${clientURL}/login?error=google_auth_failed`,
+    session: false,
+  }),
+  async (req, res) => {
     try {
-      // Check if user already exists
-      let user = await User.findOne({ email });
-
-      if (!user) {
-        // If user doesn't exist, create a new user
-        user = new User({
-          name: userName, // Set name based on email formatting rule
-          email,
-          password: "google_oauth_user", // Default password for Google users
-          avatar: req.user.photos[0].value || null,
-          isVerified: true, // Mark Google-authenticated users as verified
-          date: null,
-        });
-
-        await user.save();
-      }
-
-      // Generate JWT token
-      const payload = { user: { id: user.id } };
-      jwt.sign(payload, jwtSecret, { expiresIn: "5 days" }, (err, token) => {
-        if (err) throw err;
-        return res.status(200).json({ success: true, token, user });
-      });
+      const user = await handleGoogleUser(req.user);
+      const token = await signToken(user.id);
+      res.redirect(`${clientURL}/login?token=${encodeURIComponent(token)}`);
     } catch (error) {
-      console.error(error.message);
-      res.status(500).send("Server Error");
+      console.error("Google OAuth callback error:", error.message);
+      res.redirect(`${clientURL}/login?error=google_auth_failed`);
     }
-  } else {
-    return res.status(400).json({ error: "no Google log in" });
+  }
+);
+
+// Legacy endpoint kept for backwards compatibility
+googleAuth.get("/success", async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: "Not authenticated with Google" });
+  }
+
+  try {
+    const user = await handleGoogleUser(req.user);
+    const token = await signToken(user.id);
+    return res.status(200).json({ success: true, token, user });
+  } catch (error) {
+    console.error("Google OAuth success error:", error.message);
+    res.status(500).json({ message: "Authentication failed. Please try again." });
   }
 });
 
 googleAuth.get("/failure", (req, res) => {
   res.status(401).json({
     success: false,
-    message: "failure",
+    message: "Google authentication failed",
   });
 });
 
 googleAuth.get("/logout", async (req, res) => {
-  await req.logout();
-  // res.clearCookie("session", { path: "/", httpOnly: true });
-  // res.clearCookie("session.sig", { path: "/", httpOnly: true });
-  // req.sessionOptions.maxAge = 0;
+  if (req.logout) {
+    await req.logout();
+  }
   return res.status(200).json({ message: "logout is done" });
 });
-
-// Handle result of authentication
-googleAuth.get(
-  "/callback",
-  passport.authenticate("google", {
-    failureRedirect: "/failure",
-    successRedirect: clientURL + "/login",
-    session: true,
-  })
-);
 
 module.exports = googleAuth;

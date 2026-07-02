@@ -1,5 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Poppins&display=swap");
 @import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css");
+@import "./responsive.css";
 
 * {
   font-family: "Poppins", sans-serif;
@@ -18,9 +19,9 @@ a {
 }
 
 .btn {
-  width: 52%;
+  width: min(100%, 320px);
   padding: 10px;
-  margin: 10px;
+  margin: 10px 0;
   background: #6cafa4;
   color: #fff;
   outline: none;
@@ -77,35 +78,7 @@ a {
   color: #fff;
 }
 
-/* Navbar */
-.navbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.7rem 2rem;
-  position: fixed;
-  z-index: 1;
-  width: 100%;
-  top: 0;
-  opacity: 0.9;
-  background: #6cafa4;
-  
-}
-
-.navbar .nav-links {
-  display: flex;
-  list-style: none;
-}
-
-.navbar a {
-  color: #fff;
-  padding: 1rem;
-  margin: 0 1rem;
-}
-
-.navbar .welcome span {
-  margin-right: 0.6rem;
-}
+/* Legacy navbar styles — overridden by Navbar.css */
 
 /* Landing Page */
 .landing {
@@ -156,9 +129,9 @@ a {
 }
 
 .form input {
-  width: 50%;
+  width: min(100%, 400px);
   padding: 10px;
-  margin: 10px;
+  margin: 10px 0;
 }
 
 .lead {
@@ -171,26 +144,4 @@ a {
 
 .link a {
   color: #6cafa4;
-}
-
-/* Mobile Styles */
-@media (max-width: 700px) {
-  /* Navbar */
-  .navbar {
-    display: block;
-    text-align: center;
-  }
-
-  .navbar ul {
-    text-align: center;
-    justify-content: center;
-  }
-
-  .navbar h1 {
-    margin-bottom: 1rem;
-  }
-
-  .navbar .welcome {
-    display: none;
-  }
 }

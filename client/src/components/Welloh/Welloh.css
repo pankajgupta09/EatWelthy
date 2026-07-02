@@ -1,28 +1,21 @@
 .chatbot-container {
   width: 100%;
+  max-width: 900px;
   border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   overflow: hidden;
   font-family: Arial, sans-serif;
-  background-color: #f9f9f9; 
+  background-color: #f9f9f9;
   display: flex;
   flex-direction: column;
-  padding-top: 2rem;
-  margin-left: auto;
-  margin-right: auto;
+  padding-top: 1rem;
+  margin: 0 auto;
+  min-height: 60vh;
+  max-height: calc(100vh - 140px);
 }
 
 .chatbot-greeting {
-width:100%;
-background-color: transparent;
-height:100%;
-padding-top: auto;
-padding-bottom: auto;
-padding-right: auto;
-padding-left: 35%;
-color:rgba(46, 94, 78, 0.1);
-font-size: 100px;
-font-weight: bold;
+  display: none;
 }
 
 .chatbot-header {
@@ -194,14 +187,38 @@ font-weight: bold;
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .faqs__title {
-    font-size: 2rem; /* Slightly smaller title on mobile */
+    font-size: 2rem;
   }
 
   .faqs__description {
-    font-size: 1rem; /* Adjust description font size */
+    font-size: 1rem;
   }
 
   .faq-item h3 {
-    font-size: 1.3rem; /* Smaller question text */
+    font-size: 1.3rem;
+  }
+
+  .chatbot-container {
+    min-height: 50vh;
+    max-height: calc(100vh - 120px);
+  }
+
+  .chatbot-messages {
+    min-height: 160px;
+  }
+
+  .chatbot-input {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chatbot-input input {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .chatbot-input button {
+    width: 100%;
+    margin-left: 0;
   }
 }

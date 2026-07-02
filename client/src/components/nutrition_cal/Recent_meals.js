@@ -72,22 +72,22 @@ const RecentMeals = ({ userId }) => {
   const renderMealTable = (dayData, title) => (
     <div className="meal-section">
       <h2>{title}</h2>
-      <div className="table-container" style={{ overflowX: 'auto' }}>
+      <div className="table-scroll-wrapper">
         <table>
           <thead>
             <tr>
-              <th style={{ width: '100px' }}>Meal Type</th>
-              <th style={{ width: '120px' }}>Food</th>
-              <th style={{ width: '60px' }}>Amount</th>
-              <th style={{ width: '80px' }}>Energy<br />(kcal)</th>
-              <th style={{ width: '60px' }}>Fat<br />(g)</th>
-              <th style={{ width: '60px' }}>Sugar<br />(g)</th>
-              <th style={{ width: '60px' }}>Fiber<br />(g)</th>
-              <th style={{ width: '60px' }}>Protein<br />(g)</th>
-              <th style={{ width: '80px' }}>Sodium<br />(mg)</th>
-              <th style={{ width: '80px' }}>Vitamin C<br />(mg)</th>
-              <th style={{ width: '80px' }}>Calcium<br />(mg)</th>
-              <th style={{ width: '60px' }}>Iron<br />(mg)</th>
+              <th>Meal Type</th>
+              <th>Food</th>
+              <th>Amount</th>
+              <th>Energy<br />(kcal)</th>
+              <th>Fat<br />(g)</th>
+              <th>Sugar<br />(g)</th>
+              <th>Fiber<br />(g)</th>
+              <th>Protein<br />(g)</th>
+              <th>Sodium<br />(mg)</th>
+              <th>Vit C<br />(mg)</th>
+              <th>Calcium<br />(mg)</th>
+              <th>Iron<br />(mg)</th>
             </tr>
           </thead>
           <tbody>
@@ -97,22 +97,25 @@ const RecentMeals = ({ userId }) => {
               </tr>
             ) : (
               <>
-                {dayData.meals.map(({ meal, nutrition }) => (
-                  <tr key={meal._id}>
-                    <td>{meal.meal_type}</td>
-                    <td>{meal.food_taken}</td>
-                    <td>{meal.portion}</td>
-                    <td>{formatNumber(meal.portion * nutrition[0].energy)}</td>
-                    <td>{formatNumber(meal.portion * nutrition[0].fat)}</td>
-                    <td>{formatNumber(meal.portion * nutrition[0].sugar)}</td>
-                    <td>{formatNumber(meal.portion * nutrition[0].fiber)}</td>
-                    <td>{formatNumber(meal.portion * nutrition[0].protein)}</td>
-                    <td>{formatNumber(meal.portion * nutrition[0].sodium)}</td>
-                    <td>{formatNumber(meal.portion * nutrition[0].vitamin_c)}</td>
-                    <td>{formatNumber(meal.portion * nutrition[0].calcium)}</td>
-                    <td>{formatNumber(meal.portion * nutrition[0].iron)}</td>
-                  </tr>
-                ))}
+                {dayData.meals.map(({ meal, nutrition }) => {
+                  const hasNutrition = nutrition && Array.isArray(nutrition) && nutrition.length > 0 && nutrition[0];
+                  return (
+                    <tr key={meal._id}>
+                      <td>{meal.meal_type}</td>
+                      <td>{meal.food_taken}</td>
+                      <td>{meal.portion}</td>
+                      <td>{hasNutrition ? formatNumber(meal.portion * nutrition[0].energy) : 'N/A'}</td>
+                      <td>{hasNutrition ? formatNumber(meal.portion * nutrition[0].fat) : 'N/A'}</td>
+                      <td>{hasNutrition ? formatNumber(meal.portion * nutrition[0].sugar) : 'N/A'}</td>
+                      <td>{hasNutrition ? formatNumber(meal.portion * nutrition[0].fiber) : 'N/A'}</td>
+                      <td>{hasNutrition ? formatNumber(meal.portion * nutrition[0].protein) : 'N/A'}</td>
+                      <td>{hasNutrition ? formatNumber(meal.portion * nutrition[0].sodium) : 'N/A'}</td>
+                      <td>{hasNutrition ? formatNumber(meal.portion * nutrition[0].vitamin_c) : 'N/A'}</td>
+                      <td>{hasNutrition ? formatNumber(meal.portion * nutrition[0].calcium) : 'N/A'}</td>
+                      <td>{hasNutrition ? formatNumber(meal.portion * nutrition[0].iron) : 'N/A'}</td>
+                    </tr>
+                  );
+                })}
                 <tr className="totals-row">
                   <td colSpan="3">Daily Totals:</td>
                   <td>{formatNumber(dayData.totals.energy)}</td>

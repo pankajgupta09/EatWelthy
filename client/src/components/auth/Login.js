@@ -5,9 +5,10 @@ import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import config from '../../config';
 
-import { LOGIN_SUCCESS, GOOGLE_AUTO } from "../../actions/types";
-import { login } from "../../actions/auth";
+import { LOGIN_SUCCESS } from "../../actions/types";
+import { login, loadUser } from "../../actions/auth";
 import { setAlert } from "../../actions/alert";
+import setAuthToken from "../../utils/setAuthToken";
 import Alert from "../layout/Alert";
 import googleLogo from "./google.png";
 import "./login.css";
@@ -28,32 +29,25 @@ const Login = ({ auth, login }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // After Google OAuth redirect, check if we have a session
-    const checkGoogleAuth = async () => {
-      if (auth.googleAuto && !auth.isAuthenticated) {
-        try {
-          const response = await fetch(`${googleAuthURL}/success`, {
-            method: "GET",
-            credentials: "include",
-          });
-          if (response.ok) {
-            const data = await response.json();
-            if (data && data.token) {
-              localStorage.setItem('token', data.token);
-              dispatch({
-                type: LOGIN_SUCCESS,
-                payload: data,
-              });
-            }
-          }
-        } catch (err) {
-          // Silent fail - user will need to try again
-          console.log("Google auth session check failed");
-        }
-      }
-    };
-    checkGoogleAuth();
-  }, [auth.googleAuto, auth.isAuthenticated, dispatch, googleAuthURL]);
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    const error = params.get("error");
+
+    if (error === "google_auth_failed") {
+      dispatch(setAlert("Google sign-in failed. Please try again.", "danger"));
+      window.history.replaceState({}, "", "/login");
+      return;
+    }
+
+    if (token && !auth.isAuthenticated) {
+      localStorage.setItem("token", token);
+      localStorage.removeItem("googleAuto");
+      setAuthToken(token);
+      dispatch({ type: LOGIN_SUCCESS, payload: { token } });
+      dispatch(loadUser());
+      window.history.replaceState({}, "", "/login");
+    }
+  }, [auth.isAuthenticated, dispatch]);
 
   const onChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -91,8 +85,6 @@ const Login = ({ auth, login }) => {
   };
 
   const handleGoogleAuth = () => {
-    // Directly redirect to Google OAuth - no preflight needed
-    dispatch({ type: GOOGLE_AUTO });
     window.location.href = googleAuthURL;
   };
 

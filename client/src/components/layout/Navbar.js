@@ -1,85 +1,72 @@
-import React, { Fragment } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import { connect } from "react-redux";
-import PropTypes from "prop-types";
-import { logout } from "../../actions/auth";
+import React, { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import "./Navbar.css";
 
-const Navbar = ({ auth, logout }) => {
-  const navigate = useNavigate();
+const Navbar = () => {
   const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const isHome = location.pathname === "/";
 
-  console.log("Location : ", location.pathname);
+  const navLinks = [
+    { to: "/dashboard", label: "Dashboard" },
+    { to: "/nutrition-calculator", label: "Tracker" },
+    { to: "/welloh", label: "Welloh AI" },
+    { to: "/location", label: "Stores" },
+    { to: "/faqs", label: "FAQs" },
+  ];
 
-  const handleLogout = async () => {
-    logout();
-    navigate("/");
-  };
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
 
-  const authLinks = (
-    <ul className="nav-links">
-      <li onClick={handleLogout}>
-        <Link>
-          <i className="fas fa-sign-out-alt"></i>{" "}
-          <span className="hide-sm"> &nbsp;Logout</span>
-        </Link>
-      </li>
-    </ul>
-  );
-
-  const guestLinks = (
-    <ul className="nav-links">
-      <li>
-        <Link to="/register">Register</Link>
-      </li>
-      <li>
-        <Link to="/login">Login</Link>
-      </li>
-    </ul>
-  );
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [menuOpen]);
 
   return (
     <nav className="navbar bg-dark">
       <div className="left-section">
-        <div className="icon-container">
-          <img
-            src="/favicon.ico"
-            width="35"
-            height="35"
-            style={{ marginRight: "-500px" }}
-            alt="Logo"
-          />
-        </div>
-        {auth.isAuthenticated && (
+        <Link to="/" className="brand-link">
+          <div className="icon-container">
+            <img src="/favicon.ico" width="35" height="35" alt="EatWelthy Logo" />
+          </div>
+          <span className="brand-name">EatWelthy</span>
+        </Link>
+      </div>
+
+      <button
+        type="button"
+        className="nav-toggle"
+        aria-label="Toggle navigation"
+        aria-expanded={menuOpen}
+        onClick={() => setMenuOpen((prev) => !prev)}
+      >
+        <span className={`nav-hamburger ${menuOpen ? "open" : ""}`} />
+      </button>
+
+      <ul className={`nav-links ${menuOpen ? "nav-open" : ""}`}>
+        {navLinks.map((link) => (
+          <li key={link.to}>
+            <Link
+              to={link.to}
+              className={location.pathname === link.to ? "nav-active" : ""}
+              onClick={() => setMenuOpen(false)}
+            >
+              {link.label}
+            </Link>
+          </li>
+        ))}
+        {!isHome && (
           <li>
-            <Link to="/dashboard">
-              <i className="fas fa-user"></i>
-              <span className="hide-sm">Dashboard</span>
+            <Link to="/" className="nav-home-btn" onClick={() => setMenuOpen(false)}>
+              Home
             </Link>
           </li>
         )}
-      </div>
-      <h1></h1>
-      {!auth.loading && (
-        <Fragment>
-          {auth.isAuthenticated
-            ? authLinks
-            : location.pathname === "/"
-            ? guestLinks
-            : ""}
-        </Fragment>
-      )}
+      </ul>
     </nav>
   );
 };
 
-Navbar.propTypes = {
-  logout: PropTypes.func.isRequired,
-  auth: PropTypes.object.isRequired,
-};
-
-const mapStateToProps = (state) => ({
-  auth: state.auth,
-});
-
-export default connect(mapStateToProps, { logout })(Navbar);
+export default Navbar;

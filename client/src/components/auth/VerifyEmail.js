@@ -57,9 +57,9 @@ const VerifyEmail = ({
     }
     setLoading(false);
   };
-  // Redirect to login after successful verification
+  // Redirect to dashboard after successful verification
   if (verified) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/dashboard" />;
   }
 
   return (

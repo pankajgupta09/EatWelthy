@@ -12,10 +12,15 @@ const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 console.log("Passport Config - ClientID present:", !!clientID);
 console.log("Passport Config - ClientSecret present:", !!clientSecret);
 
-// Determine valid callback URL based on environment
-const callbackURL = process.env.GOOGLE_CALLBACK_URL || (process.env.NODE_ENV === 'production'
-  ? "https://eatwelthy-backend.onrender.com/users/google/callback"
-  : "/users/google/callback");
+// Google OAuth requires an absolute callback URL
+const backendURL =
+  process.env.BACKEND_URL ||
+  (process.env.NODE_ENV === "production"
+    ? "https://eatwelthy-backend.onrender.com"
+    : `http://localhost:${process.env.PORT || 5050}`);
+
+const callbackURL =
+  process.env.GOOGLE_CALLBACK_URL || `${backendURL}/users/google/callback`;
 
 if (clientID && clientSecret && clientID !== 'your_google_client_id') {
   try {

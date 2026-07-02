@@ -57,3 +57,33 @@
   background-color: lightgreen;
   color: darkgreen;
 }
+
+@media (max-width: 768px) {
+  .main-container {
+    padding: 0 16px;
+    margin-top: 20px;
+  }
+
+  .event-add {
+    flex-direction: column;
+    width: 100%;
+    font-size: 1rem;
+  }
+
+  .title,
+  .description {
+    width: 100%;
+    font-size: 1rem;
+  }
+
+  .buttons-container {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .buttons-container button {
+    width: 100%;
+    margin-right: 0;
+    font-size: 1rem;
+  }
+}

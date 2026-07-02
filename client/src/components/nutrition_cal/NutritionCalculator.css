@@ -289,3 +289,92 @@ td input:focus, td select:focus {
     outline: none;
     border-color: #4a90e2;
 }
+
+.recent-meals {
+  width: 100%;
+  overflow: hidden;
+}
+
+.meal-section {
+  margin-bottom: 2rem;
+}
+
+.meal-section h2 {
+  font-size: clamp(1.1rem, 3vw, 1.5rem);
+  margin-bottom: 12px;
+}
+
+.totals-row td {
+  font-weight: 700;
+  background: #eef7f2;
+}
+
+@media (max-width: 900px) {
+  .select {
+    flex-wrap: wrap;
+  }
+
+  .select li {
+    flex: 1 1 calc(50% - 5px);
+    min-width: 140px;
+    font-size: 0.9rem;
+    padding: 10px 12px;
+  }
+
+  .add_food_form,
+  .add_meal_form,
+  .remove_form {
+    padding: 1rem;
+  }
+
+  .add_food_form p,
+  .add_meal_form p,
+  .remove_form p {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .add_food_form input,
+  .add_meal_form input,
+  .remove_form input,
+  .add_meal_form select {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  th, td {
+    padding: 8px;
+    font-size: 0.85rem;
+  }
+}
+
+.custom-food-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+}
+
+@media (max-width: 768px) {
+  .custom-food-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 576px) {
+  .select li {
+    flex: 1 1 100%;
+  }
+
+  .add_food_bottom_buttons button,
+  .add_meal_bottom_buttons button,
+  .remove_bottom_buttons button {
+    width: 100%;
+    margin-right: 0;
+    margin-bottom: 8px;
+  }
+
+  input[type="number"] {
+    width: 100%;
+    max-width: 120px;
+  }
+}

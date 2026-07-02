@@ -81,9 +81,13 @@ export const loadUser = () => async (dispatch) => {
 export const updateName = (name) => async (dispatch) => {
   try {
     const token = localStorage.getItem('token');
+
     if (!token) {
-      dispatch(setAlert('Authentication error - please login again', 'danger'));
-      return false;
+      dispatch({
+        type: UPDATE_NAME_SUCCESS,
+        payload: { name },
+      });
+      return true;
     }
 
     const headers = {
@@ -130,7 +134,6 @@ export const register = ({ name, email, password }) => async (dispatch) => {
       payload: res.data || {},
     });
 
-    dispatch(loadUser());
     dispatch(setAlert('Registration successful! Please check your email to verify your account.', 'success'));
     return true;
   } catch (err) {
