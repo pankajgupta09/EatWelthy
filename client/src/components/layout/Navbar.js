@@ -10,7 +10,6 @@ const Navbar = () => {
   const navLinks = [
     { to: "/dashboard", label: "Dashboard" },
     { to: "/nutrition-calculator", label: "Tracker" },
-    { to: "/welloh", label: "Welloh AI" },
     { to: "/location", label: "Stores" },
     { to: "/faqs", label: "FAQs" },
   ];
@@ -21,7 +20,9 @@ const Navbar = () => {
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [menuOpen]);
 
   return (

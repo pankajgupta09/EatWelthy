@@ -52,6 +52,10 @@ const Nutrition_Schema = new mongoose.Schema({
     default: 0.0,
   },
 });
+
+// Compound index for the most common query: find food by owner + name
+Nutrition_Schema.index({ owner: 1, name: 1 });
+
 Nutrition_Schema.statics.hashedOwner = (owner) =>
   crypto
     .createHash("sha256")

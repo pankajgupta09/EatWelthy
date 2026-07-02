@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { getProfile } from "../../actions/Profile";
 
@@ -53,7 +53,6 @@ const Sidebar = ({ user, isOpen, onNavigate }) => {
         <li><Link to="/calendar" onClick={handleClick}>Calendar</Link></li>
         <li><Link to="/faqs" onClick={handleClick}>FAQs</Link></li>
         <li><Link to="/location" onClick={handleClick}>Location</Link></li>
-        <li><Link to="/welloh" className="wellohli" onClick={handleClick}>Welloh</Link></li>
       </ul>
     </aside>
   );

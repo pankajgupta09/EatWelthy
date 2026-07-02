@@ -20,7 +20,7 @@ const ProfileSchema = new mongoose.Schema(
     },
     gender: {
       type: String,
-      enum: ["male", "female"],
+      enum: ["male", "female", "other"],
       default: null,
     },
     height: {
@@ -60,12 +60,12 @@ const ProfileSchema = new mongoose.Schema(
     },
     activityLevel: {
       type: String,
-      enum: ["sedentary", "lightly", "moderately", "very", "super"],
+      enum: ["sedentary", "lightly_active", "moderately_active", "very_active", "extra_active"],
       default: "sedentary",
     },
     dietPlan: {
       type: String,
-      enum: ["maintenance", "weightloss", "keto", "vegetarian"],
+      enum: ["maintenance", "weight_loss", "weight_gain", "muscle_gain"],
       default: "maintenance",
     },
     // In ProfileSchema, update the dietSuggestions field

@@ -1,145 +1,142 @@
 const router = require("express").Router();
 const Event = require("../models/Event");
-
-//for google calendar integration
+const User = require("../models/User");
+const auth = require("../middlewares/auth");
 const { google } = require("googleapis");
 
-// Initialize OAuth2 client
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  "https://accounts.google.com/o/oauth2/auth" // replace with your redirect URI
-);
-
-// Scopes for Google Calendar
-const SCOPES = ["https://www.googleapis.com/auth/calendar.events"];
-// Helper function to create a Google Calendar event
-
-async function createGoogleCalendarEvent(event) {
-  const calendar = google.calendar({ version: "v3", auth: oauth2Client });
-
-  const eventStartTime = new Date(event.start);
-  const eventEndTime = new Date(event.end);
-
-  const calendarEvent = {
-    summary: event.title,
-    description: event.describe,
-    start: {
-      dateTime: eventStartTime.toISOString(),
-      timeZone: "Asia/Singapore", // Update time zone as necessary
-    },
-    end: {
-      dateTime: eventEndTime.toISOString(),
-      timeZone: "Asia/Singapore", // Update time zone as necessary
-    },
-  };
+// Attempt to sync an event to the user's Google Calendar if they have tokens
+async function syncToGoogleCalendar(user, event) {
+  if (!user.googleAccessToken) return null;
 
   try {
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_CALLBACK_URL
+    );
+
+    oauth2Client.setCredentials({
+      access_token: user.googleAccessToken,
+      refresh_token: user.googleRefreshToken,
+    });
+
+    // Auto-refresh the access token if expired
+    oauth2Client.on("tokens", async (tokens) => {
+      if (tokens.access_token) {
+        user.googleAccessToken = tokens.access_token;
+        await user.save();
+      }
+    });
+
+    const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+
+    const calendarEvent = {
+      summary: event.title,
+      description: event.describe || "",
+      start: {
+        dateTime: new Date(event.start).toISOString(),
+        timeZone: "Asia/Kolkata",
+      },
+      end: {
+        dateTime: new Date(event.end).toISOString(),
+        timeZone: "Asia/Kolkata",
+      },
+    };
+
     const response = await calendar.events.insert({
       calendarId: "primary",
       resource: calendarEvent,
     });
-    return response.data; // Return the created event details
+
+    return response.data.id;
   } catch (error) {
-    console.error("Error creating Google Calendar event:", error);
-    throw error; // Propagate the error for handling in the route
+    console.error("Google Calendar sync failed:", error.message);
+    return null; // Non-fatal — event is still saved locally
   }
 }
 
-// Route to create a new event
-router.post("/", async (req, res) => {
-  const hashedUserId = Event.hashedUserId(req.body.userId);
-  const newBody = { ...req.body, userId: hashedUserId };
-
-  const newEvent = new Event(newBody);
-
+// POST /events — create a new event
+router.post("/", auth, async (req, res) => {
   try {
-    // Save event to the database
+    const hashedUserId = Event.hashedUserId(req.user.id);
+    const newEvent = new Event({ ...req.body, userId: hashedUserId });
     const savedEvent = await newEvent.save();
 
-    // Create Google Calendar event
-    const googleEvent = await createGoogleCalendarEvent(savedEvent);
+    // Attempt Google Calendar sync (non-blocking)
+    const user = await User.findById(req.user.id);
+    const googleEventId = await syncToGoogleCalendar(user, savedEvent);
 
     return res.status(200).json({
       success: true,
       data: savedEvent,
-      message: "Event is added",
-      googleCalendarEventId: googleEvent.id, // Optionally return the Google Calendar event ID
+      message: "Event added",
+      googleCalendarEventId: googleEventId || null,
     });
   } catch (err) {
-    console.error("Error:", err);
-    return res.status(400).json({ success: false, error: err });
+    console.error("Error creating event:", err.message);
+    return res.status(400).json({ success: false, error: "Failed to create event" });
   }
 });
 
-router.get("/", async (req, res) => {
-  const user = req.query;
-  const hashedUserId = Event.hashedUserId(user.id);
-
-  const events = await Event.find({});
-  const filteredEvents = events.filter((event) => event.userId == hashedUserId);
-  // console.log("ID : ", user.id);
-  // console.log("FilteredEvent : ", filteredEvents);
-
+// GET /events — get all events for the authenticated user
+router.get("/", auth, async (req, res) => {
   try {
-    res.status(200).json(filteredEvents);
+    const hashedUserId = Event.hashedUserId(req.user.id);
+    const events = await Event.find({ userId: hashedUserId });
+    res.status(200).json(events);
   } catch (err) {
-    console.error("Error:", err);
-    return res.status(400).json({ success: false, error: err });
+    console.error("Error fetching events:", err.message);
+    return res.status(400).json({ success: false, error: "Failed to fetch events" });
   }
 });
 
-router.get("/:id/show", async (req, res) => {
-  const id = req.params.id;
-  const event = await Event.findById(id);
-
+// GET /events/:id/show — get a single event
+router.get("/:id/show", auth, async (req, res) => {
   try {
+    const event = await Event.findById(req.params.id);
+    if (!event) {
+      return res.status(404).json({ success: false, message: "Event not found" });
+    }
     res.status(200).json(event);
   } catch (err) {
-    console.error("Error:", err);
-    return res
-      .status(400)
-      .json({ success: false, message: "Event is not found" });
+    console.error("Error fetching event:", err.message);
+    return res.status(400).json({ success: false, message: "Event not found" });
   }
 });
 
-router.put("/:id/update", async (req, res) => {
-  const id = req.params.id;
-  console.log("ID: ", id);
-  console.log(req.body);
-  const updateQuery = {
-    title: req.body.title,
-    start: req.body.start,
-    end: req.body.end,
-    describe: req.body.describe,
-  };
+// PUT /events/:id/update — update an event
+router.put("/:id/update", auth, async (req, res) => {
   try {
-    const result = await Event.findOneAndUpdate({ _id: id }, updateQuery);
-    console.log("event found", result);
-    return res
-      .status(200)
-      .json({ sucess: true, data: result, message: "event is updated" });
-  } catch (err) {
-    console.log(err);
-    return res
-      .status(404)
-      .json({ success: false, message: "event is not updated" });
-  }
-});
+    const { title, start, end, describe } = req.body;
 
-router.delete("/:id/delete", async (req, res) => {
-  const id = req.params.id;
-  console.log("DELETE ID : ", id);
-  try {
-    const found = await Event.findById(id);
-    console.log("FOUND : ", found);
-    if (found) {
-      const result = await Event.findByIdAndDelete(id);
-      console.log("DELETE result:", result);
-      res.status(200).json({ sucess: true, message: "Event is delete" });
+    const result = await Event.findOneAndUpdate(
+      { _id: req.params.id },
+      { title, start, end, describe },
+      { new: true }
+    );
+
+    if (!result) {
+      return res.status(404).json({ success: false, message: "Event not found" });
     }
+
+    return res.status(200).json({ success: true, data: result, message: "Event updated" });
   } catch (err) {
-    console.log({ sucess: false, message: "Event is not delete" });
+    console.error("Error updating event:", err.message);
+    return res.status(400).json({ success: false, message: "Event not updated" });
+  }
+});
+
+// DELETE /events/:id/delete — delete an event
+router.delete("/:id/delete", auth, async (req, res) => {
+  try {
+    const result = await Event.findByIdAndDelete(req.params.id);
+    if (!result) {
+      return res.status(404).json({ success: false, message: "Event not found" });
+    }
+    res.status(200).json({ success: true, message: "Event deleted" });
+  } catch (err) {
+    console.error("Error deleting event:", err.message);
+    res.status(400).json({ success: false, message: "Failed to delete event" });
   }
 });
 

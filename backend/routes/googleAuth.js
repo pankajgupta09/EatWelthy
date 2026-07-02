@@ -1,112 +1,101 @@
 const express = require("express");
 const passport = require("passport");
 const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 
 const googleAuth = express.Router();
-const jwtSecret = process.env.JWT_SECRET || "mysecrettoken";
 
 const User = require("../models/User");
 
-const clientURL =
-  process.env.CLIENT_URL ||
-  (process.env.NODE_ENV === "production"
-    ? "https://eat-welthy.vercel.app"
-    : "http://localhost:3000");
+const clientURL = process.env.CLIENT_URL || (process.env.NODE_ENV === "production"
+  ? "https://eat-welthy.vercel.app"
+  : "http://localhost:3000");
 
-const handleGoogleUser = async (profile) => {
-  const email = profile.emails[0].value;
-  const userName = email.includes("@gmail.com")
-    ? email.split("@gmail.com")[0]
-    : email.split("@")[0];
-
-  let user = await User.findOne({ email });
-
-  if (!user) {
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash("google_oauth_user", salt);
-
-    user = new User({
-      name: userName,
-      email,
-      password: hashedPassword,
-      avatar: profile.photos?.[0]?.value || null,
-      isVerified: true,
-    });
-
-    await user.save();
-  } else if (!user.isVerified) {
-    user.isVerified = true;
-    await user.save();
-  }
-
-  return user;
-};
-
-const signToken = (userId) =>
-  new Promise((resolve, reject) => {
-    jwt.sign({ user: { id: userId } }, jwtSecret, { expiresIn: "5 days" }, (err, token) => {
-      if (err) reject(err);
-      else resolve(token);
-    });
-  });
-
-// Start Google OAuth
 googleAuth.get(
   "/",
   passport.authenticate("google", {
-    scope: ["profile", "email"],
-    session: false,
+    scope: ["email", "https://www.googleapis.com/auth/calendar.events"],
+    accessType: "offline",
+    prompt: "consent",
   })
 );
 
-// OAuth callback — issue JWT and redirect to frontend (no session cookies needed)
-googleAuth.get(
-  "/callback",
-  passport.authenticate("google", {
-    failureRedirect: `${clientURL}/login?error=google_auth_failed`,
-    session: false,
-  }),
-  async (req, res) => {
-    try {
-      const user = await handleGoogleUser(req.user);
-      const token = await signToken(user.id);
-      res.redirect(`${clientURL}/login?token=${encodeURIComponent(token)}`);
-    } catch (error) {
-      console.error("Google OAuth callback error:", error.message);
-      res.redirect(`${clientURL}/login?error=google_auth_failed`);
-    }
-  }
-);
-
-// Legacy endpoint kept for backwards compatibility
 googleAuth.get("/success", async (req, res) => {
   if (!req.user) {
-    return res.status(401).json({ success: false, message: "Not authenticated with Google" });
+    return res.status(400).json({ error: "No Google login data" });
   }
 
+  const profile = req.user.profile || req.user;
+  const accessToken = req.user.accessToken;
+  const refreshToken = req.user.refreshToken;
+
+  const email = profile.emails[0].value;
+  const userName = email.split("@")[0];
+
   try {
-    const user = await handleGoogleUser(req.user);
-    const token = await signToken(user.id);
-    return res.status(200).json({ success: true, token, user });
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      const randomPassword = crypto.randomBytes(32).toString("hex");
+      const bcrypt = require("bcryptjs");
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(randomPassword, salt);
+
+      user = new User({
+        name: userName,
+        email,
+        password: hashedPassword,
+        avatar: profile.photos?.[0]?.value || null,
+        isVerified: true,
+        googleAccessToken: accessToken || null,
+        googleRefreshToken: refreshToken || null,
+      });
+      await user.save();
+    } else {
+      // Update tokens if we got new ones
+      if (accessToken) user.googleAccessToken = accessToken;
+      if (refreshToken) user.googleRefreshToken = refreshToken;
+      await user.save();
+    }
+
+    const payload = { user: { id: user.id } };
+    jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "5 days" }, (err, token) => {
+      if (err) {
+        console.error("JWT sign error:", err.message);
+        return res.status(500).json({ success: false, message: "Could not issue session token" });
+      }
+      const isProduction = process.env.NODE_ENV === "production";
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? "strict" : "lax",
+        maxAge: 5 * 24 * 60 * 60 * 1000,
+      });
+      const safeUser = { id: user.id, name: user.name, email: user.email, avatar: user.avatar };
+      return res.status(200).json({ success: true, token, user: safeUser });
+    });
   } catch (error) {
-    console.error("Google OAuth success error:", error.message);
-    res.status(500).json({ message: "Authentication failed. Please try again." });
+    console.error("Google auth error:", error.message);
+    res.status(500).json({ success: false, message: "Server Error" });
   }
 });
 
 googleAuth.get("/failure", (req, res) => {
-  res.status(401).json({
-    success: false,
-    message: "Google authentication failed",
-  });
+  res.status(401).json({ success: false, message: "Google authentication failed" });
 });
 
 googleAuth.get("/logout", async (req, res) => {
-  if (req.logout) {
-    await req.logout();
-  }
-  return res.status(200).json({ message: "logout is done" });
+  await req.logout();
+  return res.status(200).json({ message: "Logged out successfully" });
 });
+
+googleAuth.get(
+  "/callback",
+  passport.authenticate("google", {
+    failureRedirect: "/users/google/failure",
+    successRedirect: clientURL + "/login",
+    session: true,
+  })
+);
 
 module.exports = googleAuth;

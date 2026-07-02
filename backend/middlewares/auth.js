@@ -1,19 +1,15 @@
 const jwt = require("jsonwebtoken");
 
-var jwtSecret = process.env.JWT_SECRET || "mysecrettoken";
-
 module.exports = function (req, res, next) {
-  //Get token from header
-  const token = req.header("x-auth-token");
+  // Accept token from HTTP-only cookie (Next.js client) OR x-auth-token header (legacy CRA client)
+  const token = req.cookies?.token || req.header("x-auth-token");
 
-  //Check if there is no token in the header
   if (!token) {
     return res.status(401).json({ msg: "No token, authorization denied" });
   }
 
-  //Verify token
   try {
-    const decoded = jwt.verify(token, jwtSecret);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded.user;
     next();
   } catch (err) {

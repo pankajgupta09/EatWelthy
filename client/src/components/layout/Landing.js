@@ -18,20 +18,6 @@ const features = [
     color: "#3aa876",
   },
   {
-    icon: "🤖",
-    title: "Welloh AI",
-    description: "Your personal nutrition assistant — ask anything, anytime.",
-    link: "/welloh",
-    color: "#4ecdc4",
-  },
-  {
-    icon: "📍",
-    title: "Store Locator",
-    description: "Find healthy grocery stores near you in seconds.",
-    link: "/location",
-    color: "#6cafa4",
-  },
-  {
     icon: "🛒",
     title: "Grocery Prices",
     description: "Compare daily prices and plan your healthy shopping list.",
